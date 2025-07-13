@@ -85,8 +85,7 @@ export default {
       "tagDelimiters": ["{%", "%}"]
     },
     "php": {
-      "fileExtensions": [".php"],
-      "shortTags": false
+      "fileExtensions": [".php"]
     }
   },
   "fileExtensions": ["js", "jsx", "ts", "tsx"]
