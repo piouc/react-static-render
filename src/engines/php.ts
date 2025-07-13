@@ -12,7 +12,6 @@ export class PHPTemplateEngine extends BaseTemplateEngine<PHPEngineConfig> {
   protected createDefaultConfig(userConfig?: PHPEngineConfig): PHPEngineConfig {
     return {
       fileExtensions: this.fileExtensions,
-      shortTags: false,
       ...userConfig
     };
   }
@@ -35,14 +34,7 @@ export class PHPTemplateEngine extends BaseTemplateEngine<PHPEngineConfig> {
   }
   
   private async performMerge(template: string, content: string, styles: string, mountInfo: MountInfo): Promise<string> {
-    // Default replace strategy - same as original implementation
-    const regex = new RegExp(`(?<=<div id="${this.escapeRegex(mountInfo.rootElementId)}">)(?=<\\/div>)`);
-    
-    if (regex.test(template)) {
-      return template.replace(regex, styles + content);
-    }
-    
-    // Try to find div with rootElementId
+    // Only use div replacement strategy
     const divRegex = new RegExp(
       `<div\\s+id=["']${this.escapeRegex(mountInfo.rootElementId)}["'][^>]*>.*?</div>`,
       'is'
@@ -58,29 +50,7 @@ export class PHPTemplateEngine extends BaseTemplateEngine<PHPEngineConfig> {
       });
     }
     
-    
-    // Look for PHP comment indicating where to insert content
-    const commentRegex = new RegExp(
-      `<\\?php\\s*\\/\\*\\s*${this.escapeRegex(mountInfo.rootElementId)}\\s*\\*\\/\\s*\\?>`,
-      'is'
-    );
-    
-    if (commentRegex.test(template)) {
-      return template.replace(commentRegex, 
-        `<div id="${mountInfo.rootElementId}">${styles}${content}</div>`
-      );
-    }
-    
-    // If no specific insertion point found, try to insert before closing body tag
-    const bodyRegex = /<\/body>/i;
-    if (bodyRegex.test(template)) {
-      return template.replace(bodyRegex, 
-        `  <div id="${mountInfo.rootElementId}">${styles}${content}</div>\n</body>`
-      );
-    }
-    
-    // Fallback: append to end of template
-    return template + `\n<div id="${mountInfo.rootElementId}">${styles}${content}</div>`;
+    throw new Error(`No div with id="${mountInfo.rootElementId}" found in template`);
   }
   
   // Helper method to check if content looks like PHP template

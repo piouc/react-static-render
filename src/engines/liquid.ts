@@ -42,7 +42,7 @@ export class LiquidTemplateEngine extends BaseTemplateEngine<LiquidEngineConfig>
   }
   
   private async performMerge(template: string, content: string, styles: string, mountInfo: MountInfo): Promise<string> {
-    // Try to find div with rootElementId
+    // Only use div replacement strategy
     const divRegex = new RegExp(
       `<div\\s+id=["']${this.escapeRegex(mountInfo.rootElementId)}["'][^>]*>.*?</div>`,
       'is'
@@ -59,40 +59,7 @@ export class LiquidTemplateEngine extends BaseTemplateEngine<LiquidEngineConfig>
       });
     }
     
-    // Try to find Liquid include or section for the rootElementId
-    const liquidIncludeRegex = new RegExp(
-      `${this.escapeRegex(this.tagDelimiters[0])}\\s*(?:include|section)\\s+['"]${this.escapeRegex(mountInfo.rootElementId)}['"].*?${this.escapeRegex(this.tagDelimiters[1])}`,
-      'is'
-    );
-    
-    if (liquidIncludeRegex.test(template)) {
-      return template.replace(liquidIncludeRegex, 
-        `<div id="${mountInfo.rootElementId}">${styles}${content}</div>`
-      );
-    }
-    
-    // Try to find a Liquid comment indicating where to insert content
-    const commentRegex = new RegExp(
-      `${this.escapeRegex(this.tagDelimiters[0])}\\s*comment\\s*${this.escapeRegex(this.tagDelimiters[1])}\\s*${this.escapeRegex(mountInfo.rootElementId)}\\s*${this.escapeRegex(this.tagDelimiters[0])}\\s*endcomment\\s*${this.escapeRegex(this.tagDelimiters[1])}`,
-      'is'
-    );
-    
-    if (commentRegex.test(template)) {
-      return template.replace(commentRegex, 
-        `<div id="${mountInfo.rootElementId}">${styles}${content}</div>`
-      );
-    }
-    
-    // If no specific insertion point found, try to insert before closing body tag
-    const bodyRegex = /<\/body>/i;
-    if (bodyRegex.test(template)) {
-      return template.replace(bodyRegex, 
-        `  <div id="${mountInfo.rootElementId}">${styles}${content}</div>\n</body>`
-      );
-    }
-    
-    // Fallback: append to end of template
-    return template + `\n<div id="${mountInfo.rootElementId}">${styles}${content}</div>`;
+    throw new Error(`No div with id="${mountInfo.rootElementId}" found in template`);
   }
   
   // Helper method to check if content looks like Liquid template
