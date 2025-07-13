@@ -1,15 +1,86 @@
 import Joi from 'joi';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
+import type { Options as PrettierOptions } from 'prettier';
 import { 
-  RenderConfig, 
   RenderError, 
   type AsyncResult,
-  type TemplateEngineType,
-  type PrettierConfig,
-  type FileExtension 
+  type MountInfo
 } from './types.js';
 
+export type TemplateEngineType = 'php' | 'liquid' | 'auto';
+
+export interface TemplateEngineConfigs {
+  liquid?: LiquidEngineConfig;
+  php?: PHPEngineConfig;
+}
+
+export interface LiquidEngineConfig {
+  fileExtensions?: readonly FileExtension[];
+  variableDelimiters?: readonly [string, string];
+  tagDelimiters?: readonly [string, string];
+  trimWhitespace?: boolean;
+}
+
+export interface PHPEngineConfig {
+  fileExtensions?: readonly FileExtension[];
+}
+
+export interface AdvancedOptions {
+  workerPath?: string;
+  maxConcurrentRenders?: number;
+  cacheEnabled?: boolean;
+  verbose?: boolean;
+}
+
+export interface WatchConfiguration {
+  patterns?: readonly string[];
+  websocketPort?: number;
+}
+
+export interface RenderConfiguration<TEngine extends TemplateEngineType = TemplateEngineType> {
+  mountInfoExport?: string;
+  templateExtension?: string;
+  templateMergeStrategy?: 'replace' | 'custom';
+  customMergeFunction?: (
+    template: string, 
+    rendered: string, 
+    styles: string, 
+    mountInfo: MountInfo
+  ) => string;
+  templateEngine?: TEngine;
+  templateEngines?: TemplateEngineConfigs;
+}
+
+export interface BuildConfiguration {
+  prettierConfig?: PrettierOptions | false;
+  fileExtensions?: readonly string[];
+}
+
+export interface CoreConfiguration {
+  entryPointsBase: string;
+  srcBase: string;
+  outputDir: string;
+  templateDir?: string;
+}
+
+export interface RenderConfig<TEngine extends TemplateEngineType = TemplateEngineType> 
+  extends CoreConfiguration, 
+          WatchConfiguration, 
+          RenderConfiguration<TEngine>, 
+          BuildConfiguration, 
+          AdvancedOptions {}
+
+export interface RenderOptions {
+  watch?: boolean;
+  liveReload?: boolean;
+  config?: string;
+  port?: number;
+  output?: string;
+  verbose?: boolean;
+}
+
+export type FileExtension = `.${string}`;
 
 interface ConfigSource {
   readonly path: string;
@@ -68,35 +139,13 @@ const configSchema = Joi.object<RenderConfig>({
       trimWhitespace: Joi.boolean().optional()
     }).optional(),
     php: Joi.object({
-      fileExtensions: Joi.array().items(Joi.string()).optional(),
-      shortTags: Joi.boolean().optional()
+      fileExtensions: Joi.array().items(Joi.string()).optional()
     }).optional()
   }).optional().description('Template engine specific configurations'),
   
   // Build configuration
   prettierConfig: Joi.alternatives().try(
-    Joi.object<PrettierConfig>({
-      parser: Joi.string().valid('html', 'css', 'scss', 'less').optional(),
-      printWidth: Joi.number().integer().min(0).optional(),
-      tabWidth: Joi.number().integer().min(0).optional(),
-      useTabs: Joi.boolean().optional(),
-      semi: Joi.boolean().optional(),
-      singleQuote: Joi.boolean().optional(),
-      quoteProps: Joi.string().valid('as-needed', 'consistent', 'preserve').optional(),
-      trailingComma: Joi.string().valid('none', 'es5', 'all').optional(),
-      bracketSpacing: Joi.boolean().optional(),
-      bracketSameLine: Joi.boolean().optional(),
-      arrowParens: Joi.string().valid('always', 'avoid').optional(),
-      rangeStart: Joi.number().integer().min(0).optional(),
-      rangeEnd: Joi.number().integer().min(0).optional(),
-      requirePragma: Joi.boolean().optional(),
-      insertPragma: Joi.boolean().optional(),
-      proseWrap: Joi.string().valid('always', 'never', 'preserve').optional(),
-      htmlWhitespaceSensitivity: Joi.string().valid('css', 'strict', 'ignore').optional(),
-      endOfLine: Joi.string().valid('lf', 'crlf', 'cr', 'auto').optional(),
-      embeddedLanguageFormatting: Joi.string().valid('auto', 'off').optional(),
-      singleAttributePerLine: Joi.boolean().optional()
-    }),
+    Joi.object().unknown(true), // Allow any Prettier options
     Joi.boolean().valid(false)
   ).optional().description('Prettier configuration for formatting output'),
   

@@ -2,7 +2,7 @@ import { ServerStyleSheet } from 'styled-components';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
 import { readFile, mkdir, writeFile } from 'fs/promises';
-import { format } from 'prettier';
+import { format, type Options as PrettierOptions } from 'prettier';
 import { join, parse, resolve, dirname } from 'path';
 import { pathToFileURL } from 'url';
 import { 
@@ -11,8 +11,7 @@ import {
   type RenderConfig, 
   type ProcessingContext,
   type FileInfo,
-  type FileExtension,
-  type PrettierConfig 
+  type FileExtension
 } from './types.js';
 import { 
   createTemplateEngine, 
@@ -256,7 +255,7 @@ function createStandaloneHtml(
 
 async function formatWithPrettier(
   html: string,
-  prettierConfig: PrettierConfig | false | undefined,
+  prettierConfig: PrettierOptions | false | undefined,
   filePath: string
 ): Promise<string> {
   if (prettierConfig === false) {
