@@ -1,0 +1,75 @@
+{
+  "name": "react-static-render",
+  "version": "1.0.0",
+  "description": "A CLI tool for rendering React components to static HTML files",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "react-static-render": "./bin/react-static-render.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./components": {
+      "import": "./dist/components/index.js",
+      "types": "./dist/components/index.d.ts"
+    },
+    "./components/liquid": {
+      "import": "./dist/components/liquid-template-parts.js",
+      "types": "./dist/components/liquid-template-parts.d.ts"
+    },
+    "./components/php": {
+      "import": "./dist/components/php-template-parts.js",
+      "types": "./dist/components/php-template-parts.d.ts"
+    },
+    "./engines": {
+      "import": "./dist/engines/index.js",
+      "types": "./dist/engines/index.d.ts"
+    },
+    "./engines/base": {
+      "import": "./dist/engines/base.js",
+      "types": "./dist/engines/base.d.ts"
+    },
+    "./engines/liquid": {
+      "import": "./dist/engines/liquid.js",
+      "types": "./dist/engines/liquid.d.ts"
+    },
+    "./engines/php": {
+      "import": "./dist/engines/php.js",
+      "types": "./dist/engines/php.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "commander": "^14.0.0",
+    "dependency-tree": "^11.2.0",
+    "glob": "^11.0.3",
+    "joi": "^17.13.3",
+    "prettier": "^3.6.2",
+    "react": ">=19.1.0",
+    "react-dom": ">=19.1.0",
+    "styled-components": "^6.1.19",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.1.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
+  }
+}
