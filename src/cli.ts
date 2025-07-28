@@ -269,8 +269,3 @@ program
 
 // Parse command line arguments
 program.parse(process.argv);
-
-// Run default action (render) if no arguments provided
-if (!process.argv.slice(2).length) {
-  renderAction([], {});
-}
