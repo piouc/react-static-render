@@ -3,6 +3,9 @@ import { format, type Options as PrettierOptions } from 'prettier';
 import { join, parse, resolve, dirname } from 'path';
 import { pathToFileURL } from 'url';
 import { createRequire } from 'module';
+import { writeFileSync, unlinkSync } from 'fs';
+import { tmpdir } from 'os';
+import { createBabelTransformer } from './babel-loader.js';
 import { 
   RenderError,
   type MountInfo, 
@@ -112,12 +115,73 @@ function createFileInfo(filePath: string): FileInfo {
 
 async function loadModule(
   absolutePath: string,
-  filePath: string
+  filePath: string,
+  projectRoot: string
 ): Promise<ModuleWithMountInfo> {
   try {
-    const moduleUrl = pathToFileURL(absolutePath).href + `?t=${Date.now()}`;
-    const module = await import(moduleUrl) as ModuleWithMountInfo;
-    return module;
+    // Read the source file
+    const sourceCode = await readFile(absolutePath, 'utf8');
+    
+    // Transform with babel
+    const transformer = createBabelTransformer(projectRoot);
+    let transformedCode = transformer(sourceCode, absolutePath);
+    
+    // Add createRequire to handle module imports from the correct location
+    const moduleHeader = `
+import { createRequire as __createRequire } from 'module';
+const require = __createRequire('${absolutePath}');
+`;
+    
+    // Replace all ES imports with require calls to handle module resolution correctly
+    transformedCode = transformedCode
+      // Handle default imports
+      .replace(/import\s+(\w+)\s+from\s+['"](.*?)['"]/g, 'const $1 = require("$2")')
+      // Handle namespace imports
+      .replace(/import\s+\*\s+as\s+(\w+)\s+from\s+['"](.*?)['"]/g, 'const $1 = require("$2")')
+      // Handle named imports
+      .replace(/import\s+{([^}]+)}\s+from\s+['"](.*?)['"]/g, 'const {$1} = require("$2")')
+      // Handle exports
+      .replace(/export\s+default\s+/g, 'module.exports = ')
+      .replace(/export\s+{([^}]+)}/g, 'module.exports = {$1}')
+      .replace(/export\s+const\s+(\w+)\s*=/g, 'module.exports.$1 =')
+      .replace(/export\s+function\s+(\w+)/g, 'module.exports.$1 = function');
+    
+    transformedCode = moduleHeader + transformedCode;
+    
+    // Write transformed code to a temporary file (as CommonJS since we're using require)
+    const tempFileName = `react-static-render-${Date.now()}-${Math.random().toString(36).slice(2)}.cjs`;
+    const tempFilePath = join(tmpdir(), tempFileName);
+    
+    try {
+      writeFileSync(tempFilePath, transformedCode);
+      
+      // Debug: Log the first few lines of transformed code
+      if (process.env.BABEL_DEBUG) {
+        console.log('Transformed code preview:');
+        console.log(transformedCode.split('\n').slice(0, 10).join('\n'));
+      }
+      
+      // Import the transformed module
+      const moduleUrl = pathToFileURL(tempFilePath).href;
+      const module = await import(moduleUrl) as ModuleWithMountInfo;
+      
+      // Clean up temp file
+      try {
+        unlinkSync(tempFilePath);
+      } catch {
+        // Ignore cleanup errors
+      }
+      
+      return module;
+    } catch (importError) {
+      // Clean up temp file on error
+      try {
+        unlinkSync(tempFilePath);
+      } catch {
+        // Ignore cleanup errors
+      }
+      throw importError;
+    }
   } catch (error) {
     console.log(error)
     throw createRenderError(
@@ -336,7 +400,8 @@ async function renderWorker(filePath: string, config: RenderConfig): Promise<voi
   };
   
   // Load and validate module
-  const module = await loadModule(absoluteInputPath, filePath);
+  const projectRoot = process.cwd();
+  const module = await loadModule(absoluteInputPath, filePath, projectRoot);
   const mountInfo = extractMountInfo(module, config.mountInfoExport || 'default', filePath);
   context.mountInfo = mountInfo;
   
