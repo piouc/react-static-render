@@ -3,41 +3,39 @@ export * from './base.js';
 import { type TemplateEngine } from './base.js';
 import { LiquidTemplateEngine } from './liquid.js';
 import { PHPTemplateEngine } from './php.js';
-import { type TemplateEngineType, type TemplateEngineConfigs, type FileExtension } from '../types.js';
+import { type TemplateEngineType, type FileExtension } from '../types.js';
 
 export const createTemplateEngine = (
   type: TemplateEngineType, 
-  configs: TemplateEngineConfigs = {},
   filePath?: string
 ): TemplateEngine => {
   if (type === 'auto' && filePath) {
-    return selectEngineByFile(filePath, configs);
+    return selectEngineByFile(filePath);
   }
   
   switch (type) {
     case 'liquid':
-      return new LiquidTemplateEngine(configs.liquid);
+      return new LiquidTemplateEngine();
     case 'php':
-      return new PHPTemplateEngine(configs.php);
+      return new PHPTemplateEngine();
     default:
-      return new PHPTemplateEngine(configs.php);
+      return new PHPTemplateEngine();
   }
 };
 
 export const selectEngineByFile = (
-  filePath: string, 
-  configs: TemplateEngineConfigs = {}
+  filePath: string
 ): TemplateEngine => {
   const extension = getFileExtension(filePath);
   
   // Try Liquid first
-  const liquidEngine = new LiquidTemplateEngine(configs.liquid);
+  const liquidEngine = new LiquidTemplateEngine();
   if (liquidEngine.isSupported(extension as FileExtension)) {
     return liquidEngine;
   }
   
   // Try PHP
-  const phpEngine = new PHPTemplateEngine(configs.php);
+  const phpEngine = new PHPTemplateEngine();
   if (phpEngine.isSupported(extension as FileExtension)) {
     return phpEngine;
   }

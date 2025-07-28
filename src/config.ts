@@ -5,31 +5,13 @@ import type { Options as PrettierOptions } from 'prettier';
 import { 
   RenderError, 
   type AsyncResult,
-  type MountInfo
 } from './types.js';
 
 export type TemplateEngineType = 'php' | 'liquid' | 'auto';
 
-export interface TemplateEngineConfigs {
-  liquid?: LiquidEngineConfig;
-  php?: PHPEngineConfig;
-}
-
-export interface LiquidEngineConfig {
-  fileExtensions?: readonly FileExtension[];
-  variableDelimiters?: readonly [string, string];
-  tagDelimiters?: readonly [string, string];
-  trimWhitespace?: boolean;
-}
-
-export interface PHPEngineConfig {
-  fileExtensions?: readonly FileExtension[];
-}
 
 export interface AdvancedOptions {
-  workerPath?: string;
-  maxConcurrentRenders?: number;
-  cacheEnabled?: boolean;
+  maxConcurrentRenders?: number | 'auto';
   verbose?: boolean;
 }
 
@@ -41,15 +23,7 @@ export interface WatchConfiguration {
 export interface RenderConfiguration<TEngine extends TemplateEngineType = TemplateEngineType> {
   mountInfoExport?: string;
   templateExtension?: string;
-  templateMergeStrategy?: 'replace' | 'custom';
-  customMergeFunction?: (
-    template: string, 
-    rendered: string, 
-    styles: string, 
-    mountInfo: MountInfo
-  ) => string;
   templateEngine?: TEngine;
-  templateEngines?: TemplateEngineConfigs;
 }
 
 export interface BuildConfiguration {
@@ -59,9 +33,8 @@ export interface BuildConfiguration {
 
 export interface CoreConfiguration {
   entryPointsBase: string;
-  srcBase: string;
   outputDir: string;
-  templateDir?: string;
+  templateDir: string;
 }
 
 export interface RenderConfig<TEngine extends TemplateEngineType = TemplateEngineType> 
@@ -94,13 +67,10 @@ const configSchema = Joi.object<RenderConfig>({
   entryPointsBase: Joi.string().required()
     .description('Base directory for entry point files'),
   
-  srcBase: Joi.string().required()
-    .description('Base directory for source files'),
-  
-  outputDir: Joi.string().default('dist')
+  outputDir: Joi.string().required()
     .description('Output directory for rendered files'),
   
-  templateDir: Joi.string().optional()
+  templateDir: Joi.string().required()
     .description('Directory containing template files'),
   
   // Watch mode configuration
@@ -117,31 +87,11 @@ const configSchema = Joi.object<RenderConfig>({
   templateExtension: Joi.string().default('.php')
     .description('File extension for template files'),
   
-  templateMergeStrategy: Joi.string().valid('replace', 'custom').default('replace')
-    .description('Strategy for merging rendered content with templates'),
-  
-  customMergeFunction: Joi.function().optional()
-    .when('templateMergeStrategy', {
-      is: 'custom',
-      then: Joi.required()
-    })
-    .description('Custom function for merging rendered content with templates'),
   
   // Template engine configuration
   templateEngine: Joi.string().valid('php', 'liquid', 'auto').default('auto')
     .description('Template engine to use for merging'),
   
-  templateEngines: Joi.object({
-    liquid: Joi.object({
-      fileExtensions: Joi.array().items(Joi.string()).optional(),
-      variableDelimiters: Joi.array().items(Joi.string()).length(2).optional(),
-      tagDelimiters: Joi.array().items(Joi.string()).length(2).optional(),
-      trimWhitespace: Joi.boolean().optional()
-    }).optional(),
-    php: Joi.object({
-      fileExtensions: Joi.array().items(Joi.string()).optional()
-    }).optional()
-  }).optional().description('Template engine specific configurations'),
   
   // Build configuration
   prettierConfig: Joi.alternatives().try(
@@ -153,40 +103,31 @@ const configSchema = Joi.object<RenderConfig>({
     .description('File extensions to process'),
   
   // Advanced options
-  workerPath: Joi.string().optional()
-    .description('Custom path to worker script'),
+  maxConcurrentRenders: Joi.alternatives().try(
+    Joi.number().integer().min(1),
+    Joi.string().valid('auto')
+  ).default('auto')
+    .description('Maximum number of concurrent render processes, or "auto" for CPU core count'),
   
-  maxConcurrentRenders: Joi.number().integer().min(1).default(4)
-    .description('Maximum number of concurrent render processes'),
-  
-  cacheEnabled: Joi.boolean().default(true)
-    .description('Enable caching for improved performance'),
   
   verbose: Joi.boolean().default(false)
     .description('Enable verbose logging')
 });
 
 const DEFAULT_CONFIG_PATHS = [
-  'react-static-render.config.json',
-  '.react-static-renderrc.json',
-  'package.json'
+  'react-static-render.config.json'
 ] as const;
 
 const DEFAULT_FILE_EXTENSIONS: readonly string[] = ['js', 'jsx', 'ts', 'tsx'] as const;
 
-function createDefaultConfig(): RenderConfig {
+function createDefaultConfig(): Omit<RenderConfig, 'entryPointsBase' | 'outputDir' | 'templateDir'> {
   return {
-    entryPointsBase: 'src/entry-points',
-    srcBase: 'src',
-    outputDir: 'dist',
     websocketPort: 8099,
     mountInfoExport: 'default',
     templateExtension: '.php' as FileExtension,
-    templateMergeStrategy: 'replace',
     templateEngine: 'auto',
     fileExtensions: DEFAULT_FILE_EXTENSIONS,
-    maxConcurrentRenders: 4,
-    cacheEnabled: true,
+    maxConcurrentRenders: 'auto',
     verbose: false
   };
 }
@@ -225,25 +166,8 @@ async function loadConfigSource(configPath?: string): Promise<ConfigSource> {
 
 function parseConfigData(source: ConfigSource): unknown {
   try {
-    const data = JSON.parse(source.content);
-    
-    if (source.path.endsWith('package.json')) {
-      if (!data.reactStaticRender) {
-        throw new RenderError(
-          'package.json does not contain reactStaticRender field',
-          'CONFIG_FIELD_MISSING',
-          source.path
-        );
-      }
-      return data.reactStaticRender;
-    }
-    
-    return data;
+    return JSON.parse(source.content);
   } catch (error) {
-    if (error instanceof RenderError) {
-      throw error;
-    }
-    
     throw new RenderError(
       `Failed to parse JSON in configuration file`,
       'CONFIG_PARSE_ERROR',

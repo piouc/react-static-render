@@ -3,9 +3,6 @@ import type { FileExtension, RenderConfig } from './config.js';
 
 export {
   type TemplateEngineType,
-  type TemplateEngineConfigs,
-  type LiquidEngineConfig,
-  type PHPEngineConfig,
   type AdvancedOptions,
   type WatchConfiguration,
   type RenderConfiguration,

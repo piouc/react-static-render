@@ -1,18 +1,17 @@
 import { BaseTemplateEngine } from './base.js';
-import type { MountInfo, FileExtension, AsyncResult, RenderError, PHPEngineConfig } from '../types.js';
+import type { MountInfo, FileExtension, AsyncResult, RenderError } from '../types.js';
 
-export class PHPTemplateEngine extends BaseTemplateEngine<PHPEngineConfig> {
+export class PHPTemplateEngine extends BaseTemplateEngine<any> {
   readonly name = 'php';
   readonly fileExtensions: readonly FileExtension[] = ['.php'];
   
-  constructor(config: PHPEngineConfig = {}) {
-    super(config);
+  constructor() {
+    super({});
   }
   
-  protected createDefaultConfig(userConfig?: PHPEngineConfig): PHPEngineConfig {
+  protected createDefaultConfig(): any {
     return {
-      fileExtensions: this.fileExtensions,
-      ...userConfig
+      fileExtensions: this.fileExtensions
     };
   }
   

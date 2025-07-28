@@ -3,6 +3,7 @@
 import { Command } from 'commander';
 import { readFile, writeFile } from 'fs/promises';
 import { resolve } from 'path';
+import inquirer from 'inquirer';
 import { loadConfig, createDefaultConfig } from './config.js';
 import { Renderer } from './render.js';
 import { LiveReloadServer } from './websocket.js';
@@ -157,13 +158,72 @@ async function initAction(options: InitOptions): Promise<void> {
     // File doesn't exist, we can create it
   }
 
+  console.log('Welcome to React Static Render setup!\n');
+  
+  // Prompt for required configuration
+  const answers = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'entryPointsBase',
+      message: 'Where are your React entry point files located?',
+      default: 'src/entry-points',
+      validate: (input: string) => {
+        if (!input.trim()) {
+          return 'Entry points directory is required';
+        }
+        return true;
+      }
+    },
+    {
+      type: 'input',
+      name: 'outputDir',
+      message: 'Where should the rendered HTML files be saved?',
+      default: 'dist',
+      validate: (input: string) => {
+        if (!input.trim()) {
+          return 'Output directory is required';
+        }
+        return true;
+      }
+    },
+    {
+      type: 'input',
+      name: 'templateDir',
+      message: 'Where are your template files located?',
+      default: 'templates',
+      validate: (input: string) => {
+        if (!input.trim()) {
+          return 'Template directory is required';
+        }
+        return true;
+      }
+    },
+    {
+      type: 'list',
+      name: 'templateEngine',
+      message: 'Which template engine are you using?',
+      choices: [
+        { name: 'Auto-detect based on file extension', value: 'auto' },
+        { name: 'PHP', value: 'php' },
+        { name: 'Liquid (Shopify/Jekyll)', value: 'liquid' }
+      ],
+      default: 'auto'
+    }
+  ]);
+
+  // Merge with default config
   const defaultConfig = createDefaultConfig();
-  const content = JSON.stringify(defaultConfig, null, 2);
+  const config = {
+    ...defaultConfig,
+    ...answers
+  };
+  
+  const content = JSON.stringify(config, null, 2);
   
   await writeFile(configPath, content, 'utf-8');
-  console.log('Created configuration file: react-static-render.config.json');
+  console.log('\n✅ Created configuration file: react-static-render.config.json');
   console.log('\nNext steps:');
-  console.log('1. Update the configuration to match your project structure');
+  console.log('1. Create your entry point files in the specified directory');
   console.log('2. Run "react-static-render" to render your components');
 }
 
@@ -192,17 +252,6 @@ program
   .option('-v, --verbose', 'Enable verbose output')
   .action(renderAction);
 
-// Explicit render command for backward compatibility
-program
-  .command('render [files...]')
-  .description('Render React components to static HTML')
-  .option('-c, --config <path>', 'Path to configuration file')
-  .option('-w, --watch', 'Enable watch mode')
-  .option('-l, --live-reload', 'Enable live reload via WebSocket')
-  .option('-p, --port <number>', 'WebSocket port for live reload', parseInt)
-  .option('-o, --output <dir>', 'Output directory')
-  .option('-v, --verbose', 'Enable verbose output')
-  .action(renderAction);
 
 // Init command to create config file
 program
@@ -221,7 +270,7 @@ program
 // Parse command line arguments
 program.parse(process.argv);
 
-// Show help if no arguments provided
+// Run default action (render) if no arguments provided
 if (!process.argv.slice(2).length) {
-  program.outputHelp();
+  renderAction([], {});
 }

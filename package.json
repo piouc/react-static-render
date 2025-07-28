@@ -50,14 +50,16 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/inquirer": "^9.0.8",
     "chokidar": "^4.0.3",
     "commander": "^14.0.0",
     "dependency-tree": "^11.2.0",
     "glob": "^11.0.3",
+    "inquirer": "^12.8.2",
     "joi": "^17.13.3",
     "prettier": "^3.6.2",
-    "react": ">=19.1.0",
-    "react-dom": ">=19.1.0",
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0",
     "styled-components": "^6.1.19",
     "ws": "^8.18.3"
   },

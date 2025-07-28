@@ -1,17 +1,12 @@
 import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
 import { glob } from 'glob';
-import { pathToFileURL } from 'url';
+import { cpus } from 'os';
 import { 
   RenderError,
   type RenderConfig, 
   type RenderResult
 } from './types.js';
-
-interface RendererOptions {
-  readonly config: RenderConfig;
-  readonly workerPath?: string;
-}
 
 type RenderProcess = ChildProcess;
 
@@ -20,16 +15,24 @@ export class Renderer<TConfig extends RenderConfig = RenderConfig> {
   private readonly activeProcesses = new Set<RenderProcess>();
   private readonly workerPath: string;
 
-  constructor(config: TConfig, options?: Pick<RendererOptions, 'workerPath'>) {
+  constructor(config: TConfig) {
     this.config = config;
-    this.workerPath = options?.workerPath || this.getDefaultWorkerPath();
+    this.workerPath = this.getDefaultWorkerPath();
   }
 
   private getDefaultWorkerPath(): string {
-    return this.config.workerPath || join(
-      pathToFileURL(import.meta.url).pathname.replace(/\/[^\/]+$/, ''),
-      'worker.js'
-    );
+    const currentFileUrl = new URL(import.meta.url);
+    const currentDir = new URL('.', currentFileUrl);
+    const workerUrl = new URL('worker.js', currentDir);
+    return workerUrl.pathname;
+  }
+
+  private getMaxConcurrentRenders(): number {
+    const configured = this.config.maxConcurrentRenders;
+    if (configured === 'auto' || configured === undefined) {
+      return Math.max(1, cpus().length);
+    }
+    return configured;
   }
 
   private createRenderError(
@@ -126,7 +129,7 @@ export class Renderer<TConfig extends RenderConfig = RenderConfig> {
       return [];
     }
 
-    const maxConcurrent = this.config.maxConcurrentRenders || 4;
+    const maxConcurrent = this.getMaxConcurrentRenders();
     const chunks = this.chunkArray([...filePaths], maxConcurrent);
     const results: RenderResult<string>[] = [];
 

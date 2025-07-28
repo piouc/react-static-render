@@ -111,9 +111,11 @@ async function loadModule(
 ): Promise<ModuleWithMountInfo> {
   try {
     const moduleUrl = pathToFileURL(absolutePath).href + `?t=${Date.now()}`;
+    console.log(moduleUrl)
     const module = await import(moduleUrl) as ModuleWithMountInfo;
     return module;
   } catch (error) {
+    console.log(error)
     throw createRenderError(
       'Failed to import React component module',
       'WORKER_MODULE_IMPORT_ERROR',
@@ -208,14 +210,10 @@ async function mergeWithTemplate(
   filePath: string
 ): Promise<string> {
   try {
-    if (config.templateMergeStrategy === 'custom' && config.customMergeFunction) {
-      return config.customMergeFunction(template, html, styles, mountInfo);
-    }
     
     const engineType = config.templateEngine || detectEngineFromTemplate(template);
     const engine = createTemplateEngine(
       engineType as TemplateEngineType,
-      config.templateEngines || {},
       templatePath
     );
     

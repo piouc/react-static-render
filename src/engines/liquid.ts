@@ -1,26 +1,20 @@
 import { BaseTemplateEngine } from './base.js';
-import type { MountInfo, FileExtension, AsyncResult, RenderError, LiquidEngineConfig } from '../types.js';
+import type { MountInfo, FileExtension, AsyncResult, RenderError } from '../types.js';
 
-export class LiquidTemplateEngine extends BaseTemplateEngine<LiquidEngineConfig> {
+export class LiquidTemplateEngine extends BaseTemplateEngine<any> {
   readonly name = 'liquid';
   readonly fileExtensions: readonly FileExtension[] = ['.liquid', '.html'];
   
-  private readonly variableDelimiters: readonly [string, string];
-  private readonly tagDelimiters: readonly [string, string];
+  private readonly variableDelimiters: readonly [string, string] = ['{{', '}}'];
+  private readonly tagDelimiters: readonly [string, string] = ['{%', '%}'];
   
-  constructor(config: LiquidEngineConfig = {}) {
-    super(config);
-    this.variableDelimiters = config.variableDelimiters || ['{{', '}}'];
-    this.tagDelimiters = config.tagDelimiters || ['{%', '%}'];
+  constructor() {
+    super({});
   }
   
-  protected createDefaultConfig(userConfig?: LiquidEngineConfig): LiquidEngineConfig {
+  protected createDefaultConfig(): any {
     return {
-      fileExtensions: this.fileExtensions,
-      variableDelimiters: ['{{', '}}'],
-      tagDelimiters: ['{%', '%}'],
-      trimWhitespace: false,
-      ...userConfig
+      fileExtensions: this.fileExtensions
     };
   }
   

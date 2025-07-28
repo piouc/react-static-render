@@ -28,10 +28,14 @@ export class FileWatcher {
   async start(): Promise<void> {
     await this.buildInitialDependencyGraph();
 
-    const watchPatterns = this.config.patterns || [
-      this.config.entryPointsBase,
-      this.config.srcBase
-    ];
+    const watchPatterns = [...(this.config.patterns || [
+      this.config.entryPointsBase
+    ])];
+    
+    // Add template directory if specified
+    if (this.config.templateDir) {
+      watchPatterns.push(this.config.templateDir);
+    }
 
     const watcherOptions: WatcherOptions = {
       ignored: /node_modules/,
@@ -96,7 +100,7 @@ export class FileWatcher {
       try {
         const dependencies = dependencyTree({
           filename: entryPoint,
-          directory: this.config.srcBase,
+          directory: process.cwd(),
           filter: (path: string) => !path.includes('node_modules')
         });
 
