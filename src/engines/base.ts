@@ -5,12 +5,7 @@ export interface TemplateEngine<TConfig extends TemplateEngineConfig = TemplateE
   readonly fileExtensions: readonly FileExtension[];
   
   isSupported(extension: FileExtension): boolean;
-  merge(
-    template: string, 
-    content: string, 
-    styles: string, 
-    mountInfo: MountInfo
-  ): AsyncResult<string, RenderError>;
+  merge(context: MergeContext): AsyncResult<string, RenderError>;
   
   getConfig(): Readonly<TConfig>;
 }
@@ -30,103 +25,77 @@ export interface MergeContext {
   readonly mountInfo: MountInfo;
 }
 
-export abstract class BaseTemplateEngine<TConfig extends TemplateEngineConfig = TemplateEngineConfig> 
-  implements TemplateEngine<TConfig> {
-  
-  abstract readonly name: string;
-  abstract readonly fileExtensions: readonly FileExtension[];
-  
-  protected readonly config: TConfig;
-  
-  constructor(config?: TConfig) {
-    this.config = this.createDefaultConfig(config);
-  }
-  
-  protected abstract createDefaultConfig(userConfig?: TConfig): TConfig;
-  
-  isSupported(extension: FileExtension): boolean {
-    const extensions = this.config.fileExtensions || this.fileExtensions;
-    return extensions.includes(extension);
-  }
-  
-  abstract merge(
-    template: string, 
-    content: string, 
-    styles: string, 
-    mountInfo: MountInfo
-  ): AsyncResult<string, RenderError>;
-  
-  getConfig(): Readonly<TConfig> {
-    return Object.freeze({ ...this.config });
-  }
-  
-  protected createMergeContext(
-    template: string,
-    content: string,
-    styles: string,
-    mountInfo: MountInfo
-  ): MergeContext {
-    return Object.freeze({
-      template,
-      content,
-      styles,
-      mountInfo
+export interface ErrorContext {
+  readonly message: string;
+  readonly code: string;
+  readonly filePath?: string;
+  readonly cause?: Error;
+}
+
+export function createTemplateError(context: ErrorContext): RenderError {
+  return new (class extends Error implements RenderError {
+    public override readonly name = 'RenderError';
+    public readonly code: string;
+    public readonly filePath?: string;
+    public override readonly cause?: Error;
+    
+    constructor(
+      message: string,
+      code: string,
+      filePath?: string,
+      cause?: Error
+    ) {
+      super(message);
+      this.code = code;
+      if (filePath !== undefined) {
+        this.filePath = filePath;
+      }
+      if (cause !== undefined) {
+        this.cause = cause;
+      }
+    }
+  })(context.message, context.code, context.filePath, context.cause);
+}
+
+export function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function validateMergeInputs(context: MergeContext): void {
+  if (!context.template) {
+    throw createTemplateError({
+      message: 'Template content is required',
+      code: 'TEMPLATE_EMPTY'
     });
   }
   
-  protected escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!context.content) {
+    throw createTemplateError({
+      message: 'Rendered content is required',
+      code: 'CONTENT_EMPTY'
+    });
   }
   
-  protected createTemplateError(
-    message: string,
-    code: string,
-    cause?: Error
-  ): RenderError {
-    return new (class extends Error implements RenderError {
-      public override readonly name = 'RenderError';
-      public readonly code: string;
-      public readonly filePath?: string;
-      public override readonly cause?: Error;
-      
-      constructor(
-        message: string,
-        code: string,
-        filePath?: string,
-        cause?: Error
-      ) {
-        super(message);
-        this.code = code;
-        if (filePath !== undefined) {
-          this.filePath = filePath;
-        }
-        if (cause !== undefined) {
-          this.cause = cause;
-        }
-      }
-    })(message, code, undefined, cause);
+  if (!context.mountInfo?.rootElementId) {
+    throw createTemplateError({
+      message: 'Mount info with rootElementId is required',
+      code: 'MOUNT_INFO_INVALID'
+    });
   }
-  
-  protected validateMergeInputs(context: MergeContext): void {
-    if (!context.template) {
-      throw this.createTemplateError(
-        'Template content is required',
-        'TEMPLATE_EMPTY'
-      );
-    }
-    
-    if (!context.content) {
-      throw this.createTemplateError(
-        'Rendered content is required',
-        'CONTENT_EMPTY'
-      );
-    }
-    
-    if (!context.mountInfo?.rootElementId) {
-      throw this.createTemplateError(
-        'Mount info with rootElementId is required',
-        'MOUNT_INFO_INVALID'
-      );
-    }
-  }
+}
+
+export function isExtensionSupported(
+  extension: FileExtension, 
+  config: TemplateEngineConfig,
+  defaultExtensions: readonly FileExtension[]
+): boolean {
+  const extensions = config.fileExtensions || defaultExtensions;
+  return extensions.includes(extension);
+}
+
+export function createDefaultEngineConfig<TConfig extends TemplateEngineConfig>(
+  userConfig?: TConfig,
+  defaultConfig?: TConfig
+): TConfig {
+  return { ...defaultConfig, ...userConfig } as TConfig;
 }

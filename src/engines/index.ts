@@ -1,8 +1,8 @@
 export * from './base.js';
 
 import { type TemplateEngine } from './base.js';
-import { LiquidTemplateEngine } from './liquid.js';
-import { PHPTemplateEngine } from './php.js';
+import { createLiquidTemplateEngine, isLiquidTemplate } from './liquid.js';
+import { createPHPTemplateEngine } from './php.js';
 import { type TemplateEngineType, type FileExtension } from '../types.js';
 
 export const createTemplateEngine = (
@@ -15,11 +15,11 @@ export const createTemplateEngine = (
   
   switch (type) {
     case 'liquid':
-      return new LiquidTemplateEngine();
+      return createLiquidTemplateEngine();
     case 'php':
-      return new PHPTemplateEngine();
+      return createPHPTemplateEngine();
     default:
-      return new PHPTemplateEngine();
+      return createPHPTemplateEngine();
   }
 };
 
@@ -29,13 +29,13 @@ export const selectEngineByFile = (
   const extension = getFileExtension(filePath);
   
   // Try Liquid first
-  const liquidEngine = new LiquidTemplateEngine();
+  const liquidEngine = createLiquidTemplateEngine();
   if (liquidEngine.isSupported(extension as FileExtension)) {
     return liquidEngine;
   }
   
   // Try PHP
-  const phpEngine = new PHPTemplateEngine();
+  const phpEngine = createPHPTemplateEngine();
   if (phpEngine.isSupported(extension as FileExtension)) {
     return phpEngine;
   }
@@ -45,17 +45,8 @@ export const selectEngineByFile = (
 };
 
 export const detectEngineFromTemplate = (templateContent: string): TemplateEngineType => {
-  // Check for Liquid patterns
-  if (LiquidTemplateEngine.isLiquidTemplate(templateContent)) {
-    return 'liquid';
-  }
-  
-  // Check for PHP patterns
-  if (PHPTemplateEngine.isPHPTemplate(templateContent)) {
-    return 'php';
-  }
-  
-  // Default to auto
+  if (isLiquidTemplate(templateContent)) return 'liquid';
+  if (/<\?(?:php|=|\s)/.test(templateContent)) return 'php';
   return 'auto';
 };
 

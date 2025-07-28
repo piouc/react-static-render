@@ -3,9 +3,7 @@ import { format, type Options as PrettierOptions } from 'prettier';
 import { join, parse, resolve, dirname } from 'path';
 import { pathToFileURL } from 'url';
 import { createRequire } from 'module';
-import { writeFileSync, unlinkSync } from 'fs';
-import { tmpdir } from 'os';
-import { createBabelTransformer } from './babel-loader.js';
+import { decode } from 'html-entities';
 import { 
   RenderError,
   type MountInfo, 
@@ -36,35 +34,22 @@ const requireFromCwd = createRequire(join(process.cwd(), 'dummy.js'));
 const ReactDOMServer = requireFromCwd('react-dom/server');
 const { renderToStaticMarkup } = ReactDOMServer;
 
-const HTML_ENTITIES: Record<string, string> = Object.freeze({
-  '&amp;': '&',
-  '&#x26;': '&',
-  '&#39;': "'",
-  '&#x27;': "'",
-  '&quot;': '"',
-  '&#x22;': '"',
-  '&lt;': '<',
-  '&#x3C;': '<',
-  '&gt;': '>',
-  '&#x3E;': '>',
-  '&#x2F;': '/',
-});
+interface RenderErrorContext {
+  readonly message: string;
+  readonly code: string;
+  readonly filePath?: string;
+  readonly cause?: Error;
+}
 
-function createRenderError(
-  message: string,
-  code: string,
-  filePath?: string,
-  cause?: Error
-): RenderError {
-  console.log(cause)
-  return new RenderError(message, code, filePath, cause);
+function createRenderError(context: RenderErrorContext): RenderError {
+  if (context.cause) {
+    console.log(context.cause);
+  }
+  return new RenderError(context.message, context.code, context.filePath, context.cause);
 }
 
 function unescapeHtml(html: string): string {
-  return Object.entries(HTML_ENTITIES).reduce(
-    (result, [escaped, char]) => result.replaceAll(escaped, char),
-    html
-  );
+  return decode(html);
 }
 
 function parseWorkerArgs(): WorkerArgs {
@@ -72,17 +57,17 @@ function parseWorkerArgs(): WorkerArgs {
   const configJson = process.argv[3];
   
   if (!filePath) {
-    throw createRenderError(
-      'File path is required as first argument',
-      'WORKER_MISSING_FILEPATH'
-    );
+    throw createRenderError({
+      message: 'File path is required as first argument',
+      code: 'WORKER_MISSING_FILEPATH'
+    });
   }
   
   if (!configJson) {
-    throw createRenderError(
-      'Config JSON is required as second argument',
-      'WORKER_MISSING_CONFIG'
-    );
+    throw createRenderError({
+      message: 'Config JSON is required as second argument',
+      code: 'WORKER_MISSING_CONFIG'
+    });
   }
   
   return { filePath, configJson };
@@ -93,12 +78,11 @@ function parseConfig(configJson: string): RenderConfig {
     const config = JSON.parse(configJson) as RenderConfig;
     return config;
   } catch (error) {
-    throw createRenderError(
-      'Failed to parse configuration JSON',
-      'WORKER_CONFIG_PARSE_ERROR',
-      undefined,
-      error instanceof Error ? error : new Error(String(error))
-    );
+    throw createRenderError({
+      message: 'Failed to parse configuration JSON',
+      code: 'WORKER_CONFIG_PARSE_ERROR',
+      cause: error instanceof Error ? error : new Error(String(error))
+    });
   }
 }
 
@@ -115,81 +99,20 @@ function createFileInfo(filePath: string): FileInfo {
 
 async function loadModule(
   absolutePath: string,
-  filePath: string,
-  projectRoot: string
+  filePath: string
 ): Promise<ModuleWithMountInfo> {
   try {
-    // Read the source file
-    const sourceCode = await readFile(absolutePath, 'utf8');
-    
-    // Transform with babel
-    const transformer = createBabelTransformer(projectRoot);
-    let transformedCode = transformer(sourceCode, absolutePath);
-    
-    // Add createRequire to handle module imports from the correct location
-    const moduleHeader = `
-import { createRequire as __createRequire } from 'module';
-const require = __createRequire('${absolutePath}');
-`;
-    
-    // Replace all ES imports with require calls to handle module resolution correctly
-    transformedCode = transformedCode
-      // Handle default imports
-      .replace(/import\s+(\w+)\s+from\s+['"](.*?)['"]/g, 'const $1 = require("$2")')
-      // Handle namespace imports
-      .replace(/import\s+\*\s+as\s+(\w+)\s+from\s+['"](.*?)['"]/g, 'const $1 = require("$2")')
-      // Handle named imports
-      .replace(/import\s+{([^}]+)}\s+from\s+['"](.*?)['"]/g, 'const {$1} = require("$2")')
-      // Handle exports
-      .replace(/export\s+default\s+/g, 'module.exports = ')
-      .replace(/export\s+{([^}]+)}/g, 'module.exports = {$1}')
-      .replace(/export\s+const\s+(\w+)\s*=/g, 'module.exports.$1 =')
-      .replace(/export\s+function\s+(\w+)/g, 'module.exports.$1 = function');
-    
-    transformedCode = moduleHeader + transformedCode;
-    
-    // Write transformed code to a temporary file (as CommonJS since we're using require)
-    const tempFileName = `react-static-render-${Date.now()}-${Math.random().toString(36).slice(2)}.cjs`;
-    const tempFilePath = join(tmpdir(), tempFileName);
-    
-    try {
-      writeFileSync(tempFilePath, transformedCode);
-      
-      // Debug: Log the first few lines of transformed code
-      if (process.env.BABEL_DEBUG) {
-        console.log('Transformed code preview:');
-        console.log(transformedCode.split('\n').slice(0, 10).join('\n'));
-      }
-      
-      // Import the transformed module
-      const moduleUrl = pathToFileURL(tempFilePath).href;
-      const module = await import(moduleUrl) as ModuleWithMountInfo;
-      
-      // Clean up temp file
-      try {
-        unlinkSync(tempFilePath);
-      } catch {
-        // Ignore cleanup errors
-      }
-      
-      return module;
-    } catch (importError) {
-      // Clean up temp file on error
-      try {
-        unlinkSync(tempFilePath);
-      } catch {
-        // Ignore cleanup errors
-      }
-      throw importError;
-    }
+    // Directly import the module using dynamic import
+    const moduleUrl = pathToFileURL(absolutePath).href;
+    const module = await import(moduleUrl) as ModuleWithMountInfo;
+    return module;
   } catch (error) {
-    console.log(error)
-    throw createRenderError(
-      'Failed to import React component module',
-      'WORKER_MODULE_IMPORT_ERROR',
+    throw createRenderError({
+      message: 'Failed to import React component module',
+      code: 'WORKER_MODULE_IMPORT_ERROR',
       filePath,
-      error instanceof Error ? error : new Error(String(error))
-    );
+      cause: error instanceof Error ? error : new Error(String(error))
+    });
   }
 }
 
@@ -201,21 +124,21 @@ function extractMountInfo(
   const mountInfo = module[exportName];
   
   if (!mountInfo || typeof mountInfo !== 'object') {
-    throw createRenderError(
-      `Module does not export ${exportName} or export is not an object`,
-      'WORKER_MISSING_MOUNT_INFO',
+    throw createRenderError({
+      message: `Module does not export ${exportName} or export is not an object`,
+      code: 'WORKER_MISSING_MOUNT_INFO',
       filePath
-    );
+    });
   }
   
   const typedMountInfo = mountInfo as MountInfo;
   
   if (!typedMountInfo.node || !typedMountInfo.rootElementId) {
-    throw createRenderError(
-      `Mount info is missing required properties (node, rootElementId)`,
-      'WORKER_INVALID_MOUNT_INFO',
+    throw createRenderError({
+      message: `Mount info is missing required properties (node, rootElementId)`,
+      code: 'WORKER_INVALID_MOUNT_INFO',
       filePath
-    );
+    });
   }
   
   return typedMountInfo;
@@ -261,12 +184,12 @@ async function renderReactComponent(
     
     return { html, styles };
   } catch (error) {
-    throw createRenderError(
-      'Failed to render React component to HTML',
-      'WORKER_REACT_RENDER_ERROR',
+    throw createRenderError({
+      message: 'Failed to render React component to HTML',
+      code: 'WORKER_REACT_RENDER_ERROR',
       filePath,
-      error instanceof Error ? error : new Error(String(error))
-    );
+      cause: error instanceof Error ? error : new Error(String(error))
+    });
   }
 }
 
@@ -281,25 +204,28 @@ async function loadTemplate(
       return null; // Template file not found
     }
     
-    throw createRenderError(
-      'Failed to read template file',
-      'WORKER_TEMPLATE_READ_ERROR',
+    throw createRenderError({
+      message: 'Failed to read template file',
+      code: 'WORKER_TEMPLATE_READ_ERROR',
       filePath,
-      error instanceof Error ? error : new Error(String(error))
-    );
+      cause: error instanceof Error ? error : new Error(String(error))
+    });
   }
 }
 
-async function mergeWithTemplate(
-  template: string,
-  html: string,
-  styles: string,
-  mountInfo: MountInfo,
-  config: RenderConfig,
-  templatePath: string,
-  filePath: string
-): Promise<string> {
+interface MergeOptions {
+  readonly template: string;
+  readonly html: string;
+  readonly styles: string;
+  readonly mountInfo: MountInfo;
+  readonly config: RenderConfig;
+  readonly templatePath: string;
+  readonly filePath: string;
+}
+
+async function mergeWithTemplate(options: MergeOptions): Promise<string> {
   try {
+    const { template, html, styles, mountInfo, config, templatePath } = options;
     
     const engineType = config.templateEngine || detectEngineFromTemplate(template);
     const engine = createTemplateEngine(
@@ -307,18 +233,23 @@ async function mergeWithTemplate(
       templatePath
     );
     
-    const mergeResult = await engine.merge(template, html, styles, mountInfo);
+    const mergeResult = await engine.merge({
+      template,
+      content: html,
+      styles,
+      mountInfo
+    });
     if (!mergeResult.success) {
       throw mergeResult.error;
     }
     return mergeResult.data;
   } catch (error) {
-    throw createRenderError(
-      'Failed to merge rendered content with template',
-      'WORKER_TEMPLATE_MERGE_ERROR',
-      filePath,
-      error instanceof Error ? error : new Error(String(error))
-    );
+    throw createRenderError({
+      message: 'Failed to merge rendered content with template',
+      code: 'WORKER_TEMPLATE_MERGE_ERROR',
+      filePath: options.filePath,
+      cause: error instanceof Error ? error : new Error(String(error))
+    });
   }
 }
 
@@ -357,12 +288,12 @@ async function formatWithPrettier(
     
     return await format(html, config);
   } catch (error) {
-    throw createRenderError(
-      'Failed to format HTML with Prettier',
-      'WORKER_PRETTIER_ERROR',
+    throw createRenderError({
+      message: 'Failed to format HTML with Prettier',
+      code: 'WORKER_PRETTIER_ERROR',
       filePath,
-      error instanceof Error ? error : new Error(String(error))
-    );
+      cause: error instanceof Error ? error : new Error(String(error))
+    });
   }
 }
 
@@ -375,12 +306,12 @@ async function writeOutput(
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, content, 'utf8');
   } catch (error) {
-    throw createRenderError(
-      'Failed to write output file',
-      'WORKER_FILE_WRITE_ERROR',
+    throw createRenderError({
+      message: 'Failed to write output file',
+      code: 'WORKER_FILE_WRITE_ERROR',
       filePath,
-      error instanceof Error ? error : new Error(String(error))
-    );
+      cause: error instanceof Error ? error : new Error(String(error))
+    });
   }
 }
 
@@ -400,8 +331,7 @@ async function renderWorker(filePath: string, config: RenderConfig): Promise<voi
   };
   
   // Load and validate module
-  const projectRoot = process.cwd();
-  const module = await loadModule(absoluteInputPath, filePath, projectRoot);
+  const module = await loadModule(absoluteInputPath, filePath);
   const mountInfo = extractMountInfo(module, config.mountInfoExport || 'default', filePath);
   context.mountInfo = mountInfo;
   
@@ -422,15 +352,15 @@ async function renderWorker(filePath: string, config: RenderConfig): Promise<voi
     const template = await loadTemplate(templatePath, filePath);
     
     if (template) {
-      finalHtml = await mergeWithTemplate(
-        template, 
-        formattedReactHtml, 
-        formattedStyles, 
-        mountInfo, 
-        config, 
-        templatePath, 
+      finalHtml = await mergeWithTemplate({
+        template,
+        html: formattedReactHtml,
+        styles: formattedStyles,
+        mountInfo,
+        config,
+        templatePath,
         filePath
-      );
+      });
     } else {
       finalHtml = createStandaloneHtml(formattedReactHtml, formattedStyles, mountInfo);
     }

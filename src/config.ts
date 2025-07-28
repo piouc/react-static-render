@@ -1,11 +1,8 @@
-import Joi from 'joi';
+import { z } from 'zod';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 import type { Options as PrettierOptions } from 'prettier';
-import { 
-  RenderError, 
-  type AsyncResult,
-} from './types.js';
+import { ReactNode } from 'react';
 
 export type TemplateEngineType = 'php' | 'liquid' | 'auto';
 
@@ -55,6 +52,43 @@ export interface RenderOptions {
 
 export type FileExtension = `.${string}`;
 
+export class RenderError extends Error {
+  public override readonly name = 'RenderError';
+  public readonly code: string;
+  public readonly filePath?: string;
+  public override readonly cause?: Error;
+  
+  constructor(
+    message: string,
+    code: string,
+    filePath?: string,
+    cause?: Error
+  ) {
+    super(message);
+    this.code = code;
+    if (filePath !== undefined) {
+      this.filePath = filePath;
+    }
+    if (cause !== undefined) {
+      this.cause = cause;
+    }
+  }
+}
+
+export type AsyncResult<T, E = RenderError> = Promise<
+  | { success: true; data: T }
+  | { success: false; error: E }
+>;
+
+export type RenderResult<T = string> = 
+  | { success: true; data: T; outputPath?: string }
+  | { success: false; error: RenderError };
+
+export interface MountInfo {
+  node: ReactNode;
+  rootElementId: string;
+}
+
 interface ConfigSource {
   readonly path: string;
   readonly content: string;
@@ -62,68 +96,56 @@ interface ConfigSource {
 
 type ConfigLoadResult<T extends RenderConfig = RenderConfig> = AsyncResult<T, RenderError>;
 
-const configSchema = Joi.object<RenderConfig>({
+const DEFAULT_CONFIG_PATHS = ['react-static-render.config.json'] as const;
+const DEFAULT_FILE_EXTENSIONS = ['js', 'jsx', 'ts', 'tsx'] as const;
+const DEFAULT_WEBSOCKET_PORT = 8099;
+const DEFAULT_MOUNT_INFO_EXPORT = 'default';
+
+const configSchema = z.object({
   // Core configuration
-  entryPointsBase: Joi.string().required()
-    .description('Base directory for entry point files'),
-  
-  outputDir: Joi.string().required()
-    .description('Output directory for rendered files'),
-  
-  templateDir: Joi.string().required()
-    .description('Directory containing template files'),
+  entryPointsBase: z.string().describe('Base directory for entry point files'),
+  outputDir: z.string().describe('Output directory for rendered files'),
+  templateDir: z.string().describe('Directory containing template files'),
   
   // Watch mode configuration
-  patterns: Joi.array().items(Joi.string()).optional()
-    .description('Glob patterns for files to watch'),
-  
-  websocketPort: Joi.number().integer().min(1024).max(65535).default(8099)
-    .description('Port for WebSocket server in watch mode'),
+  patterns: z.array(z.string()).optional().describe('Glob patterns for files to watch'),
+  websocketPort: z.number().int().min(1024).max(65535).default(DEFAULT_WEBSOCKET_PORT)
+    .describe('Port for WebSocket server in watch mode'),
   
   // Rendering configuration
-  mountInfoExport: Joi.string().default('default')
-    .description('Export name for mount info in entry files'),
-  
-  templateExtension: Joi.string().default('.php')
-    .description('File extension for template files'),
-  
+  mountInfoExport: z.string().default(DEFAULT_MOUNT_INFO_EXPORT)
+    .describe('Export name for mount info in entry files'),
+  templateExtension: z.string().default('.php')
+    .describe('File extension for template files'),
   
   // Template engine configuration
-  templateEngine: Joi.string().valid('php', 'liquid', 'auto').default('auto')
-    .description('Template engine to use for merging'),
-  
+  templateEngine: z.enum(['php', 'liquid', 'auto']).default('auto')
+    .describe('Template engine to use for merging'),
   
   // Build configuration
-  prettierConfig: Joi.alternatives().try(
-    Joi.object().unknown(true), // Allow any Prettier options
-    Joi.boolean().valid(false)
-  ).optional().description('Prettier configuration for formatting output'),
+  prettierConfig: z.union([
+    z.record(z.unknown()), // Allow any Prettier options
+    z.literal(false)
+  ]).optional().describe('Prettier configuration for formatting output'),
   
-  fileExtensions: Joi.array().items(Joi.string()).default(['js', 'jsx', 'ts', 'tsx'])
-    .description('File extensions to process'),
+  fileExtensions: z.array(z.string()).default(['js', 'jsx', 'ts', 'tsx'])
+    .describe('File extensions to process'),
   
   // Advanced options
-  maxConcurrentRenders: Joi.alternatives().try(
-    Joi.number().integer().min(1),
-    Joi.string().valid('auto')
-  ).default('auto')
-    .description('Maximum number of concurrent render processes, or "auto" for CPU core count'),
+  maxConcurrentRenders: z.union([
+    z.number().int().min(1),
+    z.literal('auto')
+  ]).default('auto')
+    .describe('Maximum number of concurrent render processes, or "auto" for CPU core count'),
   
-  
-  verbose: Joi.boolean().default(false)
-    .description('Enable verbose logging')
+  verbose: z.boolean().default(false)
+    .describe('Enable verbose logging')
 });
-
-const DEFAULT_CONFIG_PATHS = [
-  'react-static-render.config.json'
-] as const;
-
-const DEFAULT_FILE_EXTENSIONS: readonly string[] = ['js', 'jsx', 'ts', 'tsx'] as const;
 
 function createPartialDefaultConfig(): Omit<RenderConfig, 'entryPointsBase' | 'outputDir' | 'templateDir'> {
   return {
-    websocketPort: 8099,
-    mountInfoExport: 'default',
+    websocketPort: DEFAULT_WEBSOCKET_PORT,
+    mountInfoExport: DEFAULT_MOUNT_INFO_EXPORT,
     templateExtension: '.php' as FileExtension,
     templateEngine: 'auto',
     fileExtensions: DEFAULT_FILE_EXTENSIONS,
@@ -178,23 +200,28 @@ function parseConfigData(source: ConfigSource): unknown {
 }
 
 function validateConfig<T extends RenderConfig = RenderConfig>(config: unknown): T {
-  const { error, value } = configSchema.validate(config, {
-    abortEarly: false,
-    stripUnknown: true
-  });
-
-  if (error) {
-    const details = error.details
-      .map((detail: Joi.ValidationErrorItem) => `  - ${detail.message}`)
-      .join('\n');
+  try {
+    const result = configSchema.parse(config);
+    return result as unknown as T;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const details = error.issues
+        .map((issue) => `  - ${issue.path.join('.')}: ${issue.message}`)
+        .join('\n');
+      
+      throw new RenderError(
+        `Invalid configuration:\n${details}`,
+        'CONFIG_VALIDATION_ERROR'
+      );
+    }
     
     throw new RenderError(
-      `Invalid configuration:\n${details}`,
-      'CONFIG_VALIDATION_ERROR'
+      'Failed to validate configuration',
+      'CONFIG_VALIDATION_ERROR',
+      undefined,
+      error instanceof Error ? error : new Error(String(error))
     );
   }
-
-  return value as T;
 }
 
 export async function loadConfig<T extends RenderConfig = RenderConfig>(
@@ -235,22 +262,18 @@ export const isValidTemplateEngineType = (value: string): value is TemplateEngin
 };
 
 export function createDefaultConfig(): RenderConfig {
-  return Object.freeze({
+  return {
     entryPointsBase: 'src/entry-points',
     outputDir: 'dist',
     templateDir: 'templates',
-    mountInfoExport: 'default',
+    ...createPartialDefaultConfig(),
     templateExtension: '.html',
-    templateEngine: 'auto',
     prettierConfig: {
       parser: 'html',
       printWidth: 120
     },
-    fileExtensions: ['js', 'jsx', 'ts', 'tsx'],
-    maxConcurrentRenders: 'auto',
-    verbose: false,
     websocketPort: 3001
-  } as RenderConfig);
+  } as RenderConfig;
 }
 
 export { validateConfig };

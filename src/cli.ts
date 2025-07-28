@@ -2,6 +2,9 @@
 
 import { Command } from 'commander';
 import { readFile, writeFile } from 'fs/promises';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { resolve } from 'path';
 import inquirer from 'inquirer';
 import { loadConfig, createDefaultConfig } from './config.js';
@@ -18,24 +21,32 @@ interface ListOptions {
   config?: string;
 }
 
+function getPackageVersion(): string {
+  try {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const packageJsonPath = join(__dirname, '../package.json');
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+    return packageJson.version;
+  } catch {
+    return '1.0.0';
+  }
+}
+
 const program = new Command();
 
 program
   .name('react-static-render')
   .description('A CLI tool for rendering React components to static HTML files')
-  .version('1.0.0');
+  .version(getPackageVersion());
 
 async function handleConfigLoad(configPath?: string): Promise<RenderConfig> {
   const configResult = await loadConfig(configPath);
   
   if (!configResult.success) {
-    console.error('Configuration Error:', configResult.error.message);
-    if (configResult.error.filePath) {
-      console.error('File:', configResult.error.filePath);
-    }
-    if (configResult.error.cause) {
-      console.error('Cause:', configResult.error.cause.message);
-    }
+    const { error } = configResult;
+    console.error('Configuration Error:', error.message);
+    if (error.filePath) console.error('File:', error.filePath);
+    if (error.cause) console.error('Cause:', error.cause.message);
     process.exit(1);
   }
   
@@ -60,22 +71,16 @@ function applyCliOverrides(config: RenderConfig, options: RenderOptions): Render
 
 function reportResults(results: RenderResult<string>[]): void {
   const successful = results.filter(r => r.success).length;
-  const failed = results.filter(r => !r.success).length;
+  const failed = results.length - successful;
   
   console.log(`\nRender complete: ${successful} succeeded, ${failed} failed`);
   
   if (failed > 0) {
     console.error('\nFailed renders:');
-    results.forEach((result) => {
-      if (!result.success) {
-        console.error(`  - ${result.error.message}`);
-        if (result.error.filePath) {
-          console.error(`    File: ${result.error.filePath}`);
-        }
-        if (result.error.cause) {
-          console.error(result.error.cause)
-        }
-      }
+    results.filter(r => !r.success).forEach(result => {
+      console.error(`  - ${result.error.message}`);
+      if (result.error.filePath) console.error(`    File: ${result.error.filePath}`);
+      if (result.error.cause) console.error(result.error.cause);
     });
   }
 }
@@ -87,9 +92,8 @@ async function startWatchMode(
 ): Promise<void> {
   console.log('\nStarting watch mode...');
   
-  let liveReloadServer: LiveReloadServer | null = null;
-  if (enableLiveReload) {
-    liveReloadServer = new LiveReloadServer(config);
+  const liveReloadServer = enableLiveReload ? new LiveReloadServer(config) : null;
+  if (liveReloadServer) {
     liveReloadServer.start();
     console.log('Live reload enabled');
   }
@@ -98,24 +102,16 @@ async function startWatchMode(
     console.log(`\nFiles changed, re-rendering ${files.length} file(s)...`);
     const results = await renderer.renderFiles(files);
     reportResults(results);
-    if (liveReloadServer) {
-      liveReloadServer.broadcastReload();
-    }
+    liveReloadServer?.broadcastReload();
   });
   
   await watcher.start();
-  
   console.log('Watching for changes... Press Ctrl+C to stop.');
   
   process.on('SIGINT', async () => {
     console.log('\nShutting down...');
-    const shutdownTasks: Promise<void>[] = [
-      renderer.stop(),
-      watcher.stop()
-    ];
-    if (liveReloadServer) {
-      shutdownTasks.push(liveReloadServer.stop());
-    }
+    const shutdownTasks = [renderer.stop(), watcher.stop()];
+    if (liveReloadServer) shutdownTasks.push(liveReloadServer.stop());
     await Promise.all(shutdownTasks);
     process.exit(0);
   });
@@ -127,15 +123,16 @@ async function renderAction(files: string[], options: RenderOptions): Promise<vo
     const config = applyCliOverrides(baseConfig, options);
     const renderer = new Renderer(config);
 
+    let results;
     if (files.length > 0) {
       console.log(`Rendering ${files.length} file(s)...`);
-      const results = await renderer.renderFiles(files);
-      reportResults(results);
+      results = await renderer.renderFiles(files);
     } else {
       console.log('Rendering all entry points...');
-      const results = await renderer.renderAll();
-      reportResults(results);
+      results = await renderer.renderAll();
     }
+    
+    reportResults(results);
 
     if (options.watch) {
       await startWatchMode(config, renderer, options.liveReload || false);

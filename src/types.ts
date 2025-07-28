@@ -1,5 +1,8 @@
-import { ReactNode } from 'react';
-import type { FileExtension, RenderConfig } from './config.js';
+import type { 
+  FileExtension, 
+  RenderConfig, 
+  MountInfo
+} from './config.js';
 
 export {
   type TemplateEngineType,
@@ -10,40 +13,12 @@ export {
   type CoreConfiguration,
   type RenderConfig,
   type RenderOptions,
-  type FileExtension
+  type FileExtension,
+  type MountInfo,
+  type RenderResult,
+  type AsyncResult,
+  RenderError
 } from './config.js';
-
-export interface MountInfo {
-  node: ReactNode;
-  rootElementId: string;
-}
-
-export type RenderResult<T = string> = 
-  | { success: true; data: T; outputPath?: string }
-  | { success: false; error: RenderError };
-
-export class RenderError extends Error {
-  public override readonly name = 'RenderError';
-  public readonly code: string;
-  public readonly filePath?: string;
-  public override readonly cause?: Error;
-  
-  constructor(
-    message: string,
-    code: string,
-    filePath?: string,
-    cause?: Error
-  ) {
-    super(message);
-    this.code = code;
-    if (filePath !== undefined) {
-      this.filePath = filePath;
-    }
-    if (cause !== undefined) {
-      this.cause = cause;
-    }
-  }
-}
 
 export interface DependencyGraph {
   dependencies: Map<string, Set<string>>;
@@ -62,11 +37,6 @@ export interface ProcessingContext<TConfig extends RenderConfig = RenderConfig> 
   fileInfo: FileInfo;
   mountInfo: MountInfo;
 }
-
-export type AsyncResult<T, E = RenderError> = Promise<
-  | { success: true; data: T }
-  | { success: false; error: E }
->;
 
 export interface ProcessResult {
   exitCode: number | null;
