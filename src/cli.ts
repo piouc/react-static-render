@@ -72,6 +72,9 @@ function reportResults(results: RenderResult<string>[]): void {
         if (result.error.filePath) {
           console.error(`    File: ${result.error.filePath}`);
         }
+        if (result.error.cause) {
+          console.error(result.error.cause)
+        }
       }
     });
   }

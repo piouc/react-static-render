@@ -214,14 +214,18 @@ export const PhpRaw: FunctionComponent<PhpRawProps> = ({ code }) => (
 
 export const php = (strings: TemplateStringsArray, ...placeholders: any[]) => {
   const code = strings.reduce((result, string, i) => {
-    return result + string + String(placeholders[i])
+    const placeholder = placeholders[i]
+    const value = placeholder == null ? '' : String(placeholder)
+    return result + string + value
   }, '')
   return `<?php ${code} ?>`
 }
 
 export const echo = (strings: TemplateStringsArray, ...placeholders: any[]) => {
   const code = strings.reduce((result, string, i) => {
-    return result + string + String(placeholders[i])
+    const placeholder = placeholders[i]
+    const value = placeholder == null ? '' : String(placeholder)
+    return result + string + value
   }, '')
   return `<?php echo ${code} ?>`
 }

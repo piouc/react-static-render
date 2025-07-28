@@ -1,7 +1,9 @@
 import { spawn, ChildProcess } from 'child_process';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { glob } from 'glob';
 import { cpus } from 'os';
+import { fileURLToPath } from 'url';
+import { packageUp } from 'package-up';
 import { 
   RenderError,
   type RenderConfig, 
@@ -14,10 +16,25 @@ export class Renderer<TConfig extends RenderConfig = RenderConfig> {
   private readonly config: TConfig;
   private readonly activeProcesses = new Set<RenderProcess>();
   private readonly workerPath: string;
+  private packageRoot: string | null = null;
 
   constructor(config: TConfig) {
     this.config = config;
     this.workerPath = this.getDefaultWorkerPath();
+  }
+
+  private async getPackageRoot(): Promise<string> {
+    if (this.packageRoot === null) {
+      try {
+        const currentFile = fileURLToPath(import.meta.url);
+        const packageJsonPath = await packageUp({ cwd: dirname(currentFile) });
+        this.packageRoot = packageJsonPath ? dirname(packageJsonPath) : join(new URL('.', import.meta.url).pathname, '..');
+      } catch {
+        // Fallback if package-up fails
+        this.packageRoot = join(new URL('.', import.meta.url).pathname, '..');
+      }
+    }
+    return this.packageRoot!;
   }
 
   private getDefaultWorkerPath(): string {
@@ -44,9 +61,13 @@ export class Renderer<TConfig extends RenderConfig = RenderConfig> {
     return new RenderError(message, code, filePath, cause);
   }
 
-  private createRenderProcess(filePath: string): RenderProcess {
+  private async createRenderProcess(filePath: string): Promise<RenderProcess> {
+    const packageRoot = await this.getPackageRoot();
+    const workerTsConfig = join(packageRoot, 'tsconfig.worker.json');
     return spawn('npx', [
       'tsx',
+      '--tsconfig',
+      workerTsConfig,
       this.workerPath,
       filePath,
       JSON.stringify(this.config)
@@ -112,7 +133,7 @@ export class Renderer<TConfig extends RenderConfig = RenderConfig> {
 
   async renderFile(filePath: string): Promise<RenderResult<string>> {
     try {
-      const process = this.createRenderProcess(filePath);
+      const process = await this.createRenderProcess(filePath);
       return await this.handleProcessResult(process, filePath);
     } catch (error) {
       const renderError = this.createRenderError(

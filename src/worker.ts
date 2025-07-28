@@ -315,6 +315,9 @@ async function renderWorker(filePath: string, config: RenderConfig): Promise<voi
   // Render React component
   const { html, styles } = await renderReactComponent(mountInfo, filePath);
   
+  // Format React output with Prettier before template merge
+  const formattedReactHtml = await formatWithPrettier(html, config.prettierConfig, filePath);
+  
   let finalHtml: string;
   
   // Handle template merging
@@ -325,7 +328,7 @@ async function renderWorker(filePath: string, config: RenderConfig): Promise<voi
     if (template) {
       finalHtml = await mergeWithTemplate(
         template, 
-        html, 
+        formattedReactHtml, 
         styles, 
         mountInfo, 
         config, 
@@ -333,14 +336,11 @@ async function renderWorker(filePath: string, config: RenderConfig): Promise<voi
         filePath
       );
     } else {
-      finalHtml = createStandaloneHtml(html, styles, mountInfo);
+      finalHtml = createStandaloneHtml(formattedReactHtml, styles, mountInfo);
     }
   } else {
-    finalHtml = createStandaloneHtml(html, styles, mountInfo);
+    finalHtml = createStandaloneHtml(formattedReactHtml, styles, mountInfo);
   }
-  
-  // Format with Prettier
-  finalHtml = await formatWithPrettier(finalHtml, config.prettierConfig, filePath);
   
   // Write output
   await writeOutput(finalHtml, absoluteOutputPath, filePath);
@@ -362,7 +362,7 @@ async function main(): Promise<void> {
         console.error(`File: ${error.filePath}`);
       }
       if (error.cause) {
-        console.error(`Cause: ${error.cause.message}`);
+        console.error(error.cause);
       }
     } else {
       console.error('Unexpected error:', error);
