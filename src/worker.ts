@@ -1,10 +1,8 @@
-import { ServerStyleSheet } from 'styled-components';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { createElement } from 'react';
 import { readFile, mkdir, writeFile } from 'fs/promises';
 import { format, type Options as PrettierOptions } from 'prettier';
 import { join, parse, resolve, dirname } from 'path';
 import { pathToFileURL } from 'url';
+import { createRequire } from 'module';
 import { 
   RenderError,
   type MountInfo, 
@@ -24,10 +22,16 @@ interface WorkerArgs {
   readonly configJson: string;
 }
 
-
 interface ModuleWithMountInfo {
   [key: string]: unknown;
 }
+
+// Create a require function that resolves from the current working directory
+const requireFromCwd = createRequire(join(process.cwd(), 'dummy.js'));
+
+// Dynamically import ReactDOM from the user's project
+const ReactDOMServer = requireFromCwd('react-dom/server');
+const { renderToStaticMarkup } = ReactDOMServer;
 
 const HTML_ENTITIES: Record<string, string> = Object.freeze({
   '&amp;': '&',
@@ -49,6 +53,7 @@ function createRenderError(
   filePath?: string,
   cause?: Error
 ): RenderError {
+  console.log(cause)
   return new RenderError(message, code, filePath, cause);
 }
 
@@ -114,6 +119,7 @@ async function loadModule(
     const module = await import(moduleUrl) as ModuleWithMountInfo;
     return module;
   } catch (error) {
+    console.log(error)
     throw createRenderError(
       'Failed to import React component module',
       'WORKER_MODULE_IMPORT_ERROR',
@@ -155,17 +161,12 @@ async function renderReactComponent(
   mountInfo: MountInfo,
   filePath: string
 ): Promise<{ html: string; styles: string }> {
-  const sheet = new ServerStyleSheet();
-  
   try {
     const html = unescapeHtml(
-      renderToStaticMarkup(
-        sheet.collectStyles(createElement(() => mountInfo.node))
-      )
+      renderToStaticMarkup(mountInfo.node)
     );
-    const styles = sheet.getStyleTags();
     
-    return { html, styles };
+    return { html, styles: '' };
   } catch (error) {
     throw createRenderError(
       'Failed to render React component to HTML',
@@ -173,8 +174,6 @@ async function renderReactComponent(
       filePath,
       error instanceof Error ? error : new Error(String(error))
     );
-  } finally {
-    sheet.seal();
   }
 }
 

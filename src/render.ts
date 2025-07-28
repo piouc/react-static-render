@@ -52,7 +52,11 @@ export class Renderer<TConfig extends RenderConfig = RenderConfig> {
       JSON.stringify(this.config)
     ], {
       stdio: ['inherit', 'inherit', 'inherit'],
-      cwd: process.cwd()
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        NODE_PATH: process.cwd() + '/node_modules'
+      }
     });
   }
 
