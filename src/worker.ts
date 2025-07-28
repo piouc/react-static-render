@@ -162,11 +162,40 @@ async function renderReactComponent(
   filePath: string
 ): Promise<{ html: string; styles: string }> {
   try {
-    const html = unescapeHtml(
-      renderToStaticMarkup(mountInfo.node)
-    );
+    // Try to load styled-components if available
+    let ServerStyleSheet: any;
+    let sheet: any;
     
-    return { html, styles: '' };
+    try {
+      const styledComponents = requireFromCwd('styled-components');
+      ServerStyleSheet = styledComponents.ServerStyleSheet;
+      sheet = new ServerStyleSheet();
+    } catch {
+      // styled-components not available, continue without it
+    }
+    
+    let html: string;
+    let styles = '';
+    
+    if (sheet) {
+      // Render with styled-components
+      try {
+        html = unescapeHtml(
+          renderToStaticMarkup(sheet.collectStyles(mountInfo.node))
+        );
+        const styleTags = sheet.getStyleTags();
+        styles = styleTags;
+      } finally {
+        sheet.seal();
+      }
+    } else {
+      // Render without styled-components
+      html = unescapeHtml(
+        renderToStaticMarkup(mountInfo.node)
+      );
+    }
+    
+    return { html, styles };
   } catch (error) {
     throw createRenderError(
       'Failed to render React component to HTML',
@@ -240,10 +269,9 @@ function createStandaloneHtml(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>React Static Render</title>
-  ${styles}
 </head>
 <body>
-  <div id="${mountInfo.rootElementId}">${html}</div>
+  <div id="${mountInfo.rootElementId}">${styles}${html}</div>
 </body>
 </html>`;
 }
@@ -318,6 +346,9 @@ async function renderWorker(filePath: string, config: RenderConfig): Promise<voi
   // Format React output with Prettier before template merge
   const formattedReactHtml = await formatWithPrettier(html, config.prettierConfig, filePath);
   
+  // Format styles with Prettier as well
+  const formattedStyles = styles ? await formatWithPrettier(styles, config.prettierConfig, filePath) : '';
+  
   let finalHtml: string;
   
   // Handle template merging
@@ -329,17 +360,17 @@ async function renderWorker(filePath: string, config: RenderConfig): Promise<voi
       finalHtml = await mergeWithTemplate(
         template, 
         formattedReactHtml, 
-        styles, 
+        formattedStyles, 
         mountInfo, 
         config, 
         templatePath, 
         filePath
       );
     } else {
-      finalHtml = createStandaloneHtml(formattedReactHtml, styles, mountInfo);
+      finalHtml = createStandaloneHtml(formattedReactHtml, formattedStyles, mountInfo);
     }
   } else {
-    finalHtml = createStandaloneHtml(formattedReactHtml, styles, mountInfo);
+    finalHtml = createStandaloneHtml(formattedReactHtml, formattedStyles, mountInfo);
   }
   
   // Write output

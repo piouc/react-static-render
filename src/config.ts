@@ -120,7 +120,7 @@ const DEFAULT_CONFIG_PATHS = [
 
 const DEFAULT_FILE_EXTENSIONS: readonly string[] = ['js', 'jsx', 'ts', 'tsx'] as const;
 
-function createDefaultConfig(): Omit<RenderConfig, 'entryPointsBase' | 'outputDir' | 'templateDir'> {
+function createPartialDefaultConfig(): Omit<RenderConfig, 'entryPointsBase' | 'outputDir' | 'templateDir'> {
   return {
     websocketPort: 8099,
     mountInfoExport: 'default',
@@ -201,7 +201,7 @@ export async function loadConfig<T extends RenderConfig = RenderConfig>(
   configPath?: string
 ): ConfigLoadResult<T> {
   try {
-    const defaultConfig = createDefaultConfig();
+    const defaultConfig = createPartialDefaultConfig();
     const source = await loadConfigSource(configPath);
     const configData = parseConfigData(source);
     const mergedConfig = Object.assign({}, defaultConfig, configData);
@@ -234,4 +234,23 @@ export const isValidTemplateEngineType = (value: string): value is TemplateEngin
   return ['php', 'liquid', 'auto'].includes(value);
 };
 
-export { createDefaultConfig, validateConfig };
+export function createDefaultConfig(): RenderConfig {
+  return Object.freeze({
+    entryPointsBase: 'src/entry-points',
+    outputDir: 'dist',
+    templateDir: 'templates',
+    mountInfoExport: 'default',
+    templateExtension: '.html',
+    templateEngine: 'auto',
+    prettierConfig: {
+      parser: 'html',
+      printWidth: 120
+    },
+    fileExtensions: ['js', 'jsx', 'ts', 'tsx'],
+    maxConcurrentRenders: 'auto',
+    verbose: false,
+    websocketPort: 3001
+  } as RenderConfig);
+}
+
+export { validateConfig };

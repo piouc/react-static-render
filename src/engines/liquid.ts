@@ -36,14 +36,13 @@ export class LiquidTemplateEngine extends BaseTemplateEngine<any> {
   }
   
   private async performMerge(template: string, content: string, styles: string, mountInfo: MountInfo): Promise<string> {
-    // Only use div replacement strategy
+    // Replace the content in the root element with styles + content
     const divRegex = new RegExp(
       `<div\\s+id=["']${this.escapeRegex(mountInfo.rootElementId)}["'][^>]*>.*?</div>`,
       'is'
     );
     
     if (divRegex.test(template)) {
-      // Replace content inside the div
       return template.replace(divRegex, (match) => {
         const openTagMatch = match.match(/^<div[^>]*>/i);
         if (openTagMatch) {
