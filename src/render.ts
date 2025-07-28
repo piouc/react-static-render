@@ -45,7 +45,8 @@ export class Renderer<TConfig extends RenderConfig = RenderConfig> {
   }
 
   private createRenderProcess(filePath: string): RenderProcess {
-    return spawn('node', [
+    return spawn('npx', [
+      'tsx',
       this.workerPath,
       filePath,
       JSON.stringify(this.config)

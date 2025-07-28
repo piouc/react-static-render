@@ -111,11 +111,9 @@ async function loadModule(
 ): Promise<ModuleWithMountInfo> {
   try {
     const moduleUrl = pathToFileURL(absolutePath).href + `?t=${Date.now()}`;
-    console.log(moduleUrl)
     const module = await import(moduleUrl) as ModuleWithMountInfo;
     return module;
   } catch (error) {
-    console.log(error)
     throw createRenderError(
       'Failed to import React component module',
       'WORKER_MODULE_IMPORT_ERROR',
