@@ -1,0 +1,81 @@
+{
+  "name": "react-static-render",
+  "version": "2.0.0",
+  "description": "A CLI tool for rendering React components to static HTML files",
+  "type": "module",
+  "main": "dist/config.js",
+  "types": "dist/types.d.ts",
+  "bin": {
+    "react-static-render": "./bin/react-static-render.js"
+  },
+  "exports": {
+    "./components/liquid": {
+      "import": "./dist/components/liquid-template-parts.js",
+      "require": "./dist/components/liquid-template-parts.js",
+      "types": "./dist/components/liquid-template-parts.d.ts"
+    },
+    "./components/php": {
+      "import": "./dist/components/php-template-parts.js",
+      "require": "./dist/components/php-template-parts.js",
+      "types": "./dist/components/php-template-parts.d.ts"
+    },
+    "./components/script": {
+      "import": "./dist/components/script.js",
+      "require": "./dist/components/script.js",
+      "types": "./dist/components/script.d.ts"
+    }
+  },
+  "files": [
+    "dist/",
+    "bin/",
+    "tsconfig.json",
+    "babel.config.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/preset-env": "^7.28.0",
+    "@babel/preset-react": "^7.27.1",
+    "@babel/preset-typescript": "^7.27.1",
+    "@babel/register": "^7.27.1",
+    "@types/inquirer": "^9.0.8",
+    "babel-plugin-styled-components": "^2.1.4",
+    "chokidar": "^4.0.3",
+    "commander": "^14.0.0",
+    "dependency-tree": "^11.2.0",
+    "execa": "^9.6.0",
+    "glob": "^11.0.3",
+    "html-entities": "^2.6.0",
+    "inquirer": "^12.9.0",
+    "p-limit": "^6.2.0",
+    "package-directory": "^8.1.0",
+    "package-up": "^5.0.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.3",
+    "ws": "^8.18.3",
+    "zod": "^4.0.14"
+  },
+  "devDependencies": {
+    "@types/babel__core": "^7.20.5",
+    "@types/babel__register": "^7.17.3",
+    "@types/node": "^24.1.0",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@types/ws": "^8.18.1",
+    "react": ">=19.1.1",
+    "react-dom": ">=19.1.1",
+    "typescript": "^5.9.2",
+    "typescript-mcp": "^0.0.14"
+  },
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
+  }
+}
