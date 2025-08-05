@@ -26,7 +26,7 @@ export async function renderFile(
       filePath,
       JSON.stringify(config)
     ], {
-      stdio: 'inherit',
+      stdio: ['inherit', 'inherit', 'pipe'],
       cwd: process.cwd(),
       env: {
         ...process.env,
@@ -43,9 +43,11 @@ export async function renderFile(
     }
     
   } catch (processError: unknown) {
-    const err = processError as { message?: string, exitCode?: number }
+    const err = processError as { stderr?: string, exitCode?: number }
+    const errorMessage = err.stderr?.trim() || 'Render process failed'
+    
     const error = new RenderError(
-      err.message || 'Render process failed',
+      errorMessage,
       err.exitCode ? 'PROCESS_EXIT_ERROR' : 'PROCESS_SPAWN_ERROR',
       filePath,
       processError instanceof Error ? processError : undefined
