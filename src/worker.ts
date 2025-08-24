@@ -9,6 +9,7 @@ import { packageDirectorySync } from 'package-directory'
 import { MountInfo, RenderConfig } from './config.js'
 import { mergeLiquidTemplate, type MergeContext } from './engines/liquid.js'
 import { mergePHPTemplate } from './engines/php.js'
+import { mergeHTMLTemplate } from './engines/html.js'
 
 // Register babel for worker's module imports
 register({
@@ -163,6 +164,9 @@ async function main(): Promise<void> {
         break
       case 'php':
         finalHtml = await mergePHPTemplate(mergeContext)
+        break
+      case 'html':
+        finalHtml = await mergeHTMLTemplate(mergeContext)
         break
       default:
         throw new Error(`Unknown template engine type: ${config.templateEngine}`)

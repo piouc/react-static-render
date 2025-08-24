@@ -25,7 +25,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Configuration**: `src/config.ts` - Configuration handling with Zod validation
 
 ### Template Engine System
-The project supports two template engines:
+The project supports three template engines:
+- **HTML Engine**: `src/engines/html.ts` - Plain HTML template integration (default)
 - **PHP Engine**: `src/engines/php.ts` - PHP template integration
 - **Liquid Engine**: `src/engines/liquid.ts` - Shopify/Jekyll Liquid templates
 
@@ -47,7 +48,7 @@ Default configuration created by `react-static-render init`:
   "entryPointDir": "src/entry-points",
   "outputDir": "dist",
   "templateDir": "templates",
-  "templateEngine": "php",
+  "templateEngine": "html",
   "templateExtension": ".html",
   "websocketPort": 3001
 }
@@ -85,4 +86,4 @@ Template components can be imported from:
 
 ## Template Integration
 
-Both PHP and Liquid engines require `<div id="rootElementId"></div>` to exist in the template file. The engines will replace the content within this div with the rendered React component. If the div is not found, the build will fail with an error.
+All template engines (HTML, PHP, and Liquid) require `<div id="rootElementId"></div>` to exist in the template file. The engines will replace the content within this div with the rendered React component. If the div is not found, the build will fail with an error.

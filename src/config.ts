@@ -4,7 +4,7 @@ import { resolve } from 'path'
 import type { Options as PrettierOptions } from 'prettier'
 import { ReactNode } from 'react'
 
-export type TemplateEngineType = 'php' | 'liquid'
+export type TemplateEngineType = 'php' | 'liquid' | 'html'
 
 
 export interface AdvancedOptions {
@@ -115,11 +115,11 @@ const configSchema = z.object({
   // Rendering configuration
   mountInfoExport: z.string().default(DEFAULT_MOUNT_INFO_EXPORT)
     .describe('Export name for mount info in entry files'),
-  templateExtension: z.string().default('.php')
+  templateExtension: z.string().default('.html')
     .describe('File extension for template files'),
   
   // Template engine configuration
-  templateEngine: z.enum(['php', 'liquid'])
+  templateEngine: z.enum(['php', 'liquid', 'html'])
     .describe('Template engine to use for merging'),
   
   // Build configuration
@@ -146,8 +146,8 @@ function createPartialDefaultConfig(): Omit<RenderConfig, 'entryPointDir' | 'out
   return {
     websocketPort: DEFAULT_WEBSOCKET_PORT,
     mountInfoExport: DEFAULT_MOUNT_INFO_EXPORT,
-    templateExtension: '.php' as FileExtension,
-    templateEngine: 'php',
+    templateExtension: '.html' as FileExtension,
+    templateEngine: 'html',
     fileExtensions: DEFAULT_FILE_EXTENSIONS,
     maxConcurrentRenders: 'auto',
     verbose: false
