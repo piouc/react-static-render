@@ -329,6 +329,30 @@ The Script component allows you to inject and execute JavaScript functions in th
 
 All template engines (HTML, PHP, and Liquid) require `<div id="rootElementId"></div>` to exist in the template file. The engines will replace the content within this div with the rendered React component. If the div is not found, the build will fail with an error.
 
+## Live Reload Client Script
+
+When using `--live-reload` mode, add this script to your template files:
+
+```html
+<script>
+(() => {
+  if (typeof window === 'undefined') return
+  function connect() {
+    const ws = new WebSocket('ws://localhost:8099')
+    ws.addEventListener('message', e => {
+      try { if (JSON.parse(e.data).type === 'reload') location.reload() }
+      catch (err) { console.warn('Live reload error:', err) }
+    })
+    ws.addEventListener('close', () => setTimeout(connect, 1000))
+    ws.addEventListener('error', () => setTimeout(connect, 1000))
+  }
+  connect()
+})()
+</script>
+```
+
+Replace `8099` with your configured `websocketPort` if different.
+
 ## License
 
 SIC
