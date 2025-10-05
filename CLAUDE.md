@@ -50,11 +50,14 @@ Default configuration created by `react-static-render init`:
   "templateDir": "templates",
   "templateEngine": "html",
   "templateExtension": ".html",
-  "websocketPort": 3001
+  "websocketPort": 3001,
+  "defaultTemplate": "default.html"
 }
 ```
 
 Configuration should be placed in `react-static-render.config.json`
+
+**Default Template**: When `defaultTemplate` is set, it will be used as a fallback when a specific template file is not found. The entry point's directory structure and filename are preserved in the output.
 
 ## TypeScript Configuration
 

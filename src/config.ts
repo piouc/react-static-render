@@ -32,6 +32,7 @@ export interface CoreConfiguration {
   entryPointDir: string
   outputDir: string
   templateDir: string
+  defaultTemplate?: string
 }
 
 export interface RenderConfig<TEngine extends TemplateEngineType = TemplateEngineType> 
@@ -106,6 +107,7 @@ const configSchema = z.object({
   entryPointDir: z.string().describe('Directory containing React entry point files'),
   outputDir: z.string().describe('Output directory for rendered files'),
   templateDir: z.string().describe('Directory containing template files'),
+  defaultTemplate: z.string().optional().describe('Default template file to use when specific template is not found'),
   
   // Watch mode configuration
   patterns: z.array(z.string()).optional().describe('Glob patterns for files to watch'),

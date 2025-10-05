@@ -40,6 +40,7 @@ Configuration should be placed in `react-static-render.config.json`
 | `entryPointDir` | `string` | - | **Required**. Directory containing your React entry point files. The tool will search for files in this directory based on the configured file extensions. Path is relative to your project root |
 | `outputDir` | `string` | - | **Required**. Directory where rendered HTML files will be written. The directory structure from entry points will be preserved. For example, `src/entry-points/pages/about.tsx` becomes `dist/pages/about.html` |
 | `templateDir` | `string` | - | **Required**. Directory containing template files. Templates matching entry point names will be used for merging. Template files should have the same name as your entry point file (e.g., `about.php` for `about.tsx`) |
+| `defaultTemplate` | `string` | - | Optional. Default template file path (relative to `templateDir`) to use when a specific template is not found. The entry point's directory structure and filename are preserved in the output |
 
 #### Rendering Configuration
 
@@ -87,6 +88,7 @@ Configuration should be placed in `react-static-render.config.json`
   "entryPointDir": "src/entry-points",
   "outputDir": "dist",
   "templateDir": "src/templates",
+  "defaultTemplate": "default.html",
   "templateEngine": "html",
   "templateExtension": ".html",
   "mountInfoExport": "default",
