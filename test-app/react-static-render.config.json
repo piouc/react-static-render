@@ -1,8 +1,0 @@
-{
-  "entryPointDir": "src/entry-points",
-  "outputDir": "dist",
-  "templateDir": "templates",
-  "verbose": true,
-  "templateEngine": "php",
-  "maxConcurrentRenders": "auto"
-}
