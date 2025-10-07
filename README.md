@@ -1,6 +1,6 @@
 # react-static-render
 
-React components to static HTML with template engine support (PHP, Liquid).
+React components to static HTML with template engine support (HTML, PHP, Liquid).
 
 ## Installation
 
@@ -45,7 +45,7 @@ Configuration should be placed in `react-static-render.config.json`
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `templateEngine` | `"php" \| "liquid"` | `"php"` | Specifies which template engine to use for rendering templates. Choose `"php"` for PHP templates or `"liquid"` for Liquid templates |
+| `templateEngine` | `"html" \| "php" \| "liquid"` | `"html"` | Specifies which template engine to use for rendering templates. Choose `"html"` for plain HTML templates, `"php"` for PHP templates, or `"liquid"` for Liquid templates |
 | `templateExtension` | `string` | `".html"` | Default file extension for template files when searching for matching templates. This is used when looking for template files that correspond to your entry points |
 | `mountInfoExport` | `string` | `"default"` | The export name to look for in entry files. Entry files should export an object with `node` and `rootElementId` properties. Use named exports by specifying the export name here |
 | `fileExtensions` | `string[]` | `["js", "jsx", "ts", "tsx"]` | File extensions to consider as React entry points when searching the entry points directory. Add custom extensions if using non-standard file types |
@@ -87,7 +87,7 @@ Configuration should be placed in `react-static-render.config.json`
   "entryPointDir": "src/entry-points",
   "outputDir": "dist",
   "templateDir": "src/templates",
-  "templateEngine": "php",
+  "templateEngine": "html",
   "templateExtension": ".html",
   "mountInfoExport": "default",
   "fileExtensions": ["js", "jsx", "ts", "tsx"],
@@ -142,6 +142,7 @@ The tool discovers entry points by:
 #### Template Engine Selection
 
 The `templateEngine` option controls how templates are processed:
+- `"html"` - Uses plain HTML template processing (default)
 - `"php"` - Uses PHP template processing
 - `"liquid"` - Uses Liquid template processing
 
@@ -326,7 +327,31 @@ The Script component allows you to inject and execute JavaScript functions in th
 
 ## Template Insertion
 
-Both PHP and Liquid engines require `<div id="rootElementId"></div>` to exist in the template file. The engines will replace the content within this div with the rendered React component. If the div is not found, the build will fail with an error.
+All template engines (HTML, PHP, and Liquid) require `<div id="rootElementId"></div>` to exist in the template file. The engines will replace the content within this div with the rendered React component. If the div is not found, the build will fail with an error.
+
+## Live Reload Client Script
+
+When using `--live-reload` mode, add this script to your template files:
+
+```html
+<script>
+(() => {
+  if (typeof window === 'undefined') return
+  function connect() {
+    const ws = new WebSocket('ws://localhost:8099')
+    ws.addEventListener('message', e => {
+      try { if (JSON.parse(e.data).type === 'reload') location.reload() }
+      catch (err) { console.warn('Live reload error:', err) }
+    })
+    ws.addEventListener('close', () => setTimeout(connect, 1000))
+    ws.addEventListener('error', () => setTimeout(connect, 1000))
+  }
+  connect()
+})()
+</script>
+```
+
+Replace `8099` with your configured `websocketPort` if different.
 
 ## License
 

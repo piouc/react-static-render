@@ -115,7 +115,7 @@ const configSchema = z.object({
   // Rendering configuration
   mountInfoExport: z.string().default(DEFAULT_MOUNT_INFO_EXPORT)
     .describe('Export name for mount info in entry files'),
-  templateExtension: z.string().default('.php')
+  templateExtension: z.string().default('.html')
     .describe('File extension for template files'),
   
   // Template engine configuration
@@ -146,8 +146,8 @@ function createPartialDefaultConfig(): Omit<RenderConfig, 'entryPointDir' | 'out
   return {
     websocketPort: DEFAULT_WEBSOCKET_PORT,
     mountInfoExport: DEFAULT_MOUNT_INFO_EXPORT,
-    templateExtension: '.php' as FileExtension,
-    templateEngine: 'php',
+    templateExtension: '.html' as FileExtension,
+    templateEngine: 'html',
     fileExtensions: DEFAULT_FILE_EXTENSIONS,
     maxConcurrentRenders: 'auto',
     verbose: false

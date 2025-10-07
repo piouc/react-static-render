@@ -221,10 +221,11 @@ async function initAction(options: InitOptions): Promise<void> {
       name: 'templateEngine',
       message: 'Which template engine are you using?',
       choices: [
+        { name: 'HTML', value: 'html' },
         { name: 'PHP', value: 'php' },
         { name: 'Liquid (Shopify/Jekyll)', value: 'liquid' }
       ],
-      default: 'php'
+      default: 'html'
     }
   ])
 

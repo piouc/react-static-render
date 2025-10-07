@@ -117,42 +117,6 @@ export class LiveReloadServer {
     })
   }
   
-  getClientScript(): string {
-    const port = this.config.websocketPort || 8099
-    return `
-(function() {
-  if (typeof window === 'undefined') return
-  
-  let ws
-  let reconnectInterval = 1000
-  
-  function connect() {
-    ws = new WebSocket('ws://localhost:${port}')
-    
-    ws.onmessage = function(event) {
-      try {
-        const data = JSON.parse(event.data)
-        if (data.type === 'reload') {
-          window.location.reload()
-        }
-      } catch (error) {
-        console.warn('Invalid message from live reload server:', error)
-      }
-    }
-    
-    ws.onclose = function() {
-      setTimeout(connect, reconnectInterval)
-    }
-    
-    ws.onerror = function(error) {
-      console.warn('WebSocket error:', error)
-    }
-  }
-  
-  connect()
-})()
-`
-  }
   
   getConnectedClientCount(): number {
     return this.connectedClients.size

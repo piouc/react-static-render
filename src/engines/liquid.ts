@@ -47,34 +47,3 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-// Helper function to extract Liquid variables from template
-export function extractLiquidVariables(template: string): string[] {
-  const regex = /\{\{\s*([^}]+?)\s*\}\}/g
-  const variables: string[] = []
-  let match
-  
-  while ((match = regex.exec(template)) !== null) {
-    const variable = match[1]?.trim().split('|')[0]?.trim() // Remove filters
-    if (variable && !variables.includes(variable)) {
-      variables.push(variable)
-    }
-  }
-  
-  return variables
-}
-
-// Helper function to extract Liquid tags from template
-export function extractLiquidTags(template: string): string[] {
-  const regex = /\{%\s*([^%]+?)\s*%\}/g
-  const tags: string[] = []
-  let match
-  
-  while ((match = regex.exec(template)) !== null) {
-    const tag = match[1]?.trim().split(' ')[0] // Get tag name only
-    if (tag && !tags.includes(tag)) {
-      tags.push(tag)
-    }
-  }
-  
-  return tags
-}
