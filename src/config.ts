@@ -4,7 +4,7 @@ import { resolve } from 'path'
 import type { Options as PrettierOptions } from 'prettier'
 import { ReactNode } from 'react'
 
-export type TemplateEngineType = 'php' | 'liquid'
+export type TemplateEngineType = 'php' | 'liquid' | 'html'
 
 
 export interface AdvancedOptions {
@@ -119,7 +119,7 @@ const configSchema = z.object({
     .describe('File extension for template files'),
   
   // Template engine configuration
-  templateEngine: z.enum(['php', 'liquid'])
+  templateEngine: z.enum(['php', 'liquid', 'html'])
     .describe('Template engine to use for merging'),
   
   // Build configuration
