@@ -1,14 +1,19 @@
 {
   "name": "react-static-render",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "A CLI tool for rendering React components to static HTML files",
   "type": "module",
-  "main": "dist/config.js",
-  "types": "dist/types.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "react-static-render": "./bin/react-static-render.js"
   },
   "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
     "./components/liquid": {
       "import": "./dist/components/liquid-template-parts.js",
       "require": "./dist/components/liquid-template-parts.js",

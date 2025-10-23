@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 
 type ScriptProps<T extends any[] = any[]> = {
   fn: (...args: T) => void
+  waitLoad?: boolean
 } & (
   T extends [] ? {
     args?: T
@@ -10,7 +11,7 @@ type ScriptProps<T extends any[] = any[]> = {
   }
 )
 
-export const Script = <T extends any[]>({fn, args}: ScriptProps<T>) => {
+export const Script = <T extends any[]>({fn, args, waitLoad}: ScriptProps<T>) => {
   const js = `
     (${fn.toString()}).apply(null, ${JSON.stringify(args ?? [])})
   `
@@ -28,5 +29,5 @@ export const Script = <T extends any[]>({fn, args}: ScriptProps<T>) => {
     }, [fn, args])
   }
   
-  return <script dangerouslySetInnerHTML={{__html: `window.addEventListener('DOMContentLoaded', () => {${js}})`}}></script>
+  return <script dangerouslySetInnerHTML={{__html: waitLoad === false ? js : `window.addEventListener('DOMContentLoaded', () => {${js}})`}}></script>
 }

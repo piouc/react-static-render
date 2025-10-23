@@ -138,14 +138,25 @@ async function main(): Promise<void> {
 
   const templatePath = join(config.templateDir, outputPath)
   let template: string
-  
+
   try {
     template = await readFile(templatePath, 'utf8')
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      exitWithError(`Template not found: ${templatePath}`, filePath)
+      // Try to use default template if configured
+      if (config.defaultTemplate) {
+        const defaultTemplatePath = join(config.templateDir, config.defaultTemplate)
+        try {
+          template = await readFile(defaultTemplatePath, 'utf8')
+        } catch (defaultError) {
+          exitWithError(`Template not found: ${templatePath} and default template not found: ${defaultTemplatePath}`, filePath)
+        }
+      } else {
+        exitWithError(`Template not found: ${templatePath}`, filePath)
+      }
+    } else {
+      exitWithError('Failed to read template', filePath, error instanceof Error ? error : undefined)
     }
-    exitWithError('Failed to read template', filePath, error instanceof Error ? error : undefined)
   }
 
   // Merge with template

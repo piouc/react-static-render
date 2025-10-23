@@ -10,6 +10,8 @@ npm install -D react-static-render
 
 ## Usage
 
+### CLI Usage
+
 ```bash
 # Initialize config
 react-static-render init
@@ -27,6 +29,53 @@ react-static-render --watch --live-reload
 react-static-render list
 ```
 
+### Programmatic API
+
+You can also use react-static-render programmatically in your Node.js scripts:
+
+```typescript
+import {
+  renderFile,
+  findEntryPoints,
+  loadConfig,
+  FileWatcher,
+  LiveReloadServer
+} from 'react-static-render'
+
+// Load configuration
+const configResult = await loadConfig()
+if (!configResult.success) {
+  console.error('Config error:', configResult.error)
+  process.exit(1)
+}
+const config = configResult.data
+
+// Find all entry points
+const entryPoints = await findEntryPoints(config)
+
+// Render a specific file
+const result = await renderFile('pages/about.tsx', config)
+if (result.success) {
+  console.log('Rendered to:', result.outputPath)
+} else {
+  console.error('Error:', result.error)
+}
+
+// Start file watcher
+const watcher = new FileWatcher(config, async (changedFiles) => {
+  console.log('Files changed:', changedFiles)
+  // Re-render changed files
+  for (const file of changedFiles) {
+    await renderFile(file, config)
+  }
+})
+await watcher.start()
+
+// Start live reload server
+const liveReload = new LiveReloadServer(config)
+liveReload.start()
+```
+
 ## Configuration
 
 Configuration should be placed in `react-static-render.config.json`
@@ -40,6 +89,7 @@ Configuration should be placed in `react-static-render.config.json`
 | `entryPointDir` | `string` | - | **Required**. Directory containing your React entry point files. The tool will search for files in this directory based on the configured file extensions. Path is relative to your project root |
 | `outputDir` | `string` | - | **Required**. Directory where rendered HTML files will be written. The directory structure from entry points will be preserved. For example, `src/entry-points/pages/about.tsx` becomes `dist/pages/about.html` |
 | `templateDir` | `string` | - | **Required**. Directory containing template files. Templates matching entry point names will be used for merging. Template files should have the same name as your entry point file (e.g., `about.php` for `about.tsx`) |
+| `defaultTemplate` | `string` | - | Optional. Default template file path (relative to `templateDir`) to use when a specific template is not found. The entry point's directory structure and filename are preserved in the output |
 
 #### Rendering Configuration
 
@@ -87,6 +137,7 @@ Configuration should be placed in `react-static-render.config.json`
   "entryPointDir": "src/entry-points",
   "outputDir": "dist",
   "templateDir": "src/templates",
+  "defaultTemplate": "default.html",
   "templateEngine": "html",
   "templateExtension": ".html",
   "mountInfoExport": "default",
