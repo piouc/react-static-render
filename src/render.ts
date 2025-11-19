@@ -44,15 +44,29 @@ export async function renderFile(
     
   } catch (processError: unknown) {
     const err = processError as { stderr?: string, exitCode?: number }
-    const errorMessage = err.stderr?.trim() || 'Render process failed'
-    
+    let errorMessage = err.stderr?.trim() || 'Render process failed'
+
+    if (errorMessage) {
+      const lines = errorMessage.split('\n')
+      const filteredLines = lines.filter(line => {
+        const trimmed = line.trim()
+        if (trimmed === 'Failed to load module') return false
+        if (trimmed === 'Failed to render React component') return false
+        if (trimmed.startsWith('File:')) return false
+        if (trimmed.startsWith('code:')) return false
+        if (trimmed.startsWith('url:')) return false
+        if (trimmed === '}') return false
+        return true
+      })
+      errorMessage = filteredLines.join('\n').trim()
+    }
+
     const error = new RenderError(
       errorMessage,
       err.exitCode ? 'PROCESS_EXIT_ERROR' : 'PROCESS_SPAWN_ERROR',
-      filePath,
-      processError instanceof Error ? processError : undefined
+      filePath
     )
-    
+
     return {
       success: false,
       error

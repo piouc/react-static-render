@@ -88,18 +88,21 @@ async function renderWithConcurrency(
   return Promise.all(promises)
 }
 
-function reportResults(results: RenderResult<string>[]): void {
+function reportResults(results: RenderResult<string>[], config: RenderConfig): void {
   const successful = results.filter(r => r.success).length
   const failed = results.length - successful
-  
+
   console.log(`\nRender complete: ${successful} succeeded, ${failed} failed`)
-  
+
   if (failed > 0) {
-    console.error('\nFailed renders:')
     results.filter(r => !r.success).forEach(result => {
-      console.error(`  - ${result.error.message}`)
-      if (result.error.filePath) console.error(`    File: ${result.error.filePath}`)
-      if (result.error.cause) console.error(result.error.cause)
+      // Get full relative path from project root
+      const fullPath = result.error.filePath
+        ? join(config.entryPointDir, result.error.filePath)
+        : 'unknown'
+
+      console.error(`\nERROR in ${fullPath}`)
+      console.error(result.error.message)
     })
   }
 }
@@ -119,7 +122,7 @@ async function startWatchMode(
   const watcher = new FileWatcher(config, async (files: readonly string[]) => {
     console.log(`\nFiles changed, re-rendering ${files.length} file(s)...`)
     const results = await renderWithConcurrency(files, config)
-    reportResults(results)
+    reportResults(results, config)
     liveReloadServer?.broadcastReload()
   })
   
@@ -149,8 +152,8 @@ async function renderAction(files: string[], options: RenderOptions): Promise<vo
       const entryPoints = await findEntryPoints(config)
       results = await renderWithConcurrency(entryPoints, config)
     }
-    
-    reportResults(results)
+
+    reportResults(results, config)
 
     if (options.watch) {
       await startWatchMode(config, options.liveReload || false)
