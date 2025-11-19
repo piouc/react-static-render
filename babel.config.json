@@ -2,7 +2,17 @@
   "presets": [
     "@babel/preset-typescript",
     "@babel/preset-react",
-    "@babel/preset-env"
+    [
+      "@babel/preset-env",
+      {
+        "targets": "last 1 version",
+        "exclude": [
+          "@babel/plugin-transform-async-to-generator",
+          "@babel/plugin-transform-regenerator",
+          "@babel/plugin-transform-spread"
+        ]
+      }
+    ]
   ],
   "plugins": [
     [
