@@ -38,8 +38,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
+    "build": "tsgo",
+    "dev": "tsgo --watch",
     "prepublishOnly": "npm run build"
   },
   "author": "",
@@ -61,14 +61,11 @@
     "inquirer": "^13.0.1",
     "p-limit": "^7.2.0",
     "package-directory": "^8.1.0",
-    "package-up": "^5.0.0",
     "prettier": "^3.6.2",
-    "tsx": "^4.20.6",
     "ws": "^8.18.3",
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@mizchi/lsmcp": "^0.10.0",
     "@types/babel__core": "^7.20.5",
     "@types/babel__register": "^7.17.3",
     "@types/node": "^24.10.1",
@@ -77,12 +74,10 @@
     "@types/ws": "^8.18.1",
     "@typescript/native-preview": "^7.0.0-dev.20251118.1",
     "react": ">=19.2.0",
-    "react-dom": ">=19.2.0",
-    "typescript": "^5.9.3",
-    "typescript-mcp": "^0.0.14"
+    "react-dom": ">=19.2.0"
   },
   "peerDependencies": {
-    "react": ">=17.0.0",
-    "react-dom": ">=17.0.0"
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0"
   }
 }
