@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+const processStartTime = performance.now()
+
 import register from '@babel/register'
 import { join, parse, resolve, dirname } from 'path'
 import { readFile, mkdir, writeFile } from 'fs/promises'
@@ -17,13 +19,17 @@ register({
   extensions: ['.js', '.jsx', '.ts', '.tsx'],
   ignore: ['node_modules'],
   only: [process.cwd()],
-  cache: false
+  cache: true
 })
+
+const babelInitTime = performance.now()
 
 // Create require from cwd for loading user modules
 const requireFromCwd = createRequire(join(process.cwd(), 'dummy.js'))
 const ReactDOMServer = requireFromCwd('react-dom/server')
 const { renderToStaticMarkup } = ReactDOMServer
+
+const moduleLoadTime = performance.now()
 
 
 interface WorkerModule {
@@ -75,6 +81,7 @@ async function main(): Promise<void> {
   } catch (error) {
     exitWithError('Failed to load module', filePath, error instanceof Error ? error : undefined)
   }
+  const entryLoadTime = performance.now()
 
   // Extract mount info
   const exportName = config.mountInfoExport || 'default'
@@ -117,6 +124,7 @@ async function main(): Promise<void> {
   } catch (error) {
     exitWithError('Failed to render React component', filePath, error instanceof Error ? error : undefined)
   }
+  const reactRenderTime = performance.now()
 
   // Format with Prettier if enabled
   if (config.prettierConfig !== false) {
@@ -130,6 +138,7 @@ async function main(): Promise<void> {
       exitWithError('Prettier formatting failed', filePath, error instanceof Error ? error : undefined)
     }
   }
+  const prettierTime = performance.now()
 
   // Load and merge template
   if (!config.templateDir) {
@@ -185,6 +194,7 @@ async function main(): Promise<void> {
   } catch (error) {
     exitWithError('Template merge failed', filePath, error instanceof Error ? error : undefined)
   }
+  const templateMergeTime = performance.now()
 
   // Write output
   try {
@@ -192,6 +202,21 @@ async function main(): Promise<void> {
     await writeFile(absoluteOutputPath, finalHtml, 'utf8')
   } catch (error) {
     exitWithError('Failed to write output', filePath, error instanceof Error ? error : undefined)
+  }
+  const fileWriteTime = performance.now()
+
+  // Output timing logs if verbose
+  if (config.verbose) {
+    const fmt = (ms: number) => ms.toFixed(0).padStart(6)
+    console.log(`[Timing] ${filePath}`)
+    console.log(`  Babel init:      ${fmt(babelInitTime - processStartTime)}ms`)
+    console.log(`  Module load:     ${fmt(moduleLoadTime - babelInitTime)}ms`)
+    console.log(`  Entry load:      ${fmt(entryLoadTime - moduleLoadTime)}ms`)
+    console.log(`  React render:    ${fmt(reactRenderTime - entryLoadTime)}ms`)
+    console.log(`  Prettier:        ${fmt(prettierTime - reactRenderTime)}ms`)
+    console.log(`  Template merge:  ${fmt(templateMergeTime - prettierTime)}ms`)
+    console.log(`  File write:      ${fmt(fileWriteTime - templateMergeTime)}ms`)
+    console.log(`  Total:           ${fmt(fileWriteTime - processStartTime)}ms`)
   }
 
   console.log(`Rendered: ${outputPath}`)

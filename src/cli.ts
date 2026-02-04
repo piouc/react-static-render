@@ -143,17 +143,27 @@ async function renderAction(files: string[], options: RenderOptions): Promise<vo
     const baseConfig = await handleConfigLoad(options.config)
     const config = applyCliOverrides(baseConfig, options)
 
+    const renderStart = performance.now()
     let results
+    let fileCount: number
     if (files.length > 0) {
       console.log(`Rendering ${files.length} file(s)...`)
       results = await renderWithConcurrency(files, config)
+      fileCount = files.length
     } else {
       console.log('Rendering all entry points...')
       const entryPoints = await findEntryPoints(config)
       results = await renderWithConcurrency(entryPoints, config)
+      fileCount = entryPoints.length
     }
+    const renderTime = performance.now() - renderStart
 
     reportResults(results, config)
+
+    if (config.verbose && fileCount > 0) {
+      console.log(`\nTotal render time: ${renderTime.toFixed(0)}ms`)
+      console.log(`Average per file: ${(renderTime / fileCount).toFixed(0)}ms`)
+    }
 
     if (options.watch) {
       await startWatchMode(config, options.liveReload || false)
