@@ -26,6 +26,7 @@ export interface RenderConfiguration<TEngine extends TemplateEngineType = Templa
 export interface BuildConfiguration {
   prettierConfig?: PrettierOptions | false
   fileExtensions?: readonly string[]
+  stripStyledComponentsData?: boolean
 }
 
 export interface CoreConfiguration {
@@ -132,7 +133,10 @@ const configSchema = z.object({
   
   fileExtensions: z.array(z.string()).default(['js', 'jsx', 'ts', 'tsx'])
     .describe('File extensions to process'),
-  
+
+  stripStyledComponentsData: z.boolean().default(false)
+    .describe('Strip data-styled attributes from style tags to prevent client-side rehydration'),
+
   // Advanced options
   maxConcurrentRenders: z.union([
     z.number().int().min(1),

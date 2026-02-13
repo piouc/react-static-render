@@ -115,6 +115,12 @@ async function main(): Promise<void> {
       try {
         html = decode(renderToStaticMarkup(styledSheet.collectStyles(mountInfo.node)))
         styles = styledSheet.getStyleTags()
+        if (config.stripStyledComponentsData) {
+          styles = styles
+            .replace(/data-styled="[^"]*"/g, 'data-sc="static"')
+            .replace(/ data-styled-version="[^"]*"/g, '')
+            .replace(/data-styled\.g\d+\[id="[^"]*"\]\{content:"[^"]*"\}/g, '')
+        }
       } finally {
         styledSheet.seal()
       }
