@@ -88,7 +88,7 @@ export type RenderResult<T = string> =
 
 export interface MountInfo {
   node: ReactNode
-  rootElementId: string
+  rootElementId: string | null
 }
 
 interface ConfigSource {

@@ -257,6 +257,29 @@ export default {
 }
 ```
 
+### Template-Free Rendering
+
+You can skip template integration by setting `rootElementId` to `null`. This outputs the rendered HTML directly without merging it into a template file:
+
+```tsx
+// src/entry-points/standalone.tsx
+export default {
+  node: <div>Self-contained HTML</div>,
+  rootElementId: null  // No template integration
+}
+```
+
+When `rootElementId` is `null`:
+- No template file is loaded
+- The rendered HTML is output directly to the specified output path
+- Styled-components styles (if present) are prepended to the HTML
+- The output directory structure still follows the entry point's path
+
+This is useful for:
+- Generating standalone HTML snippets
+- Creating email templates
+- Building components that don't need a full page template
+
 ## CLI Options
 
 | Option | Short | Description | Default |

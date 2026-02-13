@@ -20,7 +20,7 @@ export async function mergeLiquidTemplate(
     throw new Error('Rendered content is required')
   }
   
-  if (!mountInfo?.rootElementId) {
+  if (mountInfo?.rootElementId === undefined || mountInfo.rootElementId === null) {
     throw new Error('Mount info with rootElementId is required')
   }
   

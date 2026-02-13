@@ -90,10 +90,10 @@ async function main(): Promise<void> {
   if (!exportedValue || typeof exportedValue !== 'object' || !('node' in exportedValue) || !('rootElementId' in exportedValue)) {
     exitWithError(`Invalid export '${exportName}': must contain node and rootElementId`, filePath)
   }
-  
+
   const mountInfo: MountInfo = {
     node: exportedValue.node as React.ReactNode,
-    rootElementId: exportedValue.rootElementId as string
+    rootElementId: exportedValue.rootElementId as string | null
   }
 
   // Render React component with optional styled-components
@@ -146,59 +146,62 @@ async function main(): Promise<void> {
   }
   const prettierTime = performance.now()
 
-  // Load and merge template
-  if (!config.templateDir) {
-    exitWithError('Template directory not configured', filePath)
-  }
+  let finalHtml: string
 
-  const templatePath = join(config.templateDir, outputPath)
-  let template: string
+  if (mountInfo.rootElementId === null) {
+    finalHtml = styles + html
+  } else {
+    // Load and merge template
+    if (!config.templateDir) {
+      exitWithError('Template directory not configured', filePath)
+    }
 
-  try {
-    template = await readFile(templatePath, 'utf8')
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      // Try to use default template if configured
-      if (config.defaultTemplate) {
-        const defaultTemplatePath = join(config.templateDir, config.defaultTemplate)
-        try {
-          template = await readFile(defaultTemplatePath, 'utf8')
-        } catch (defaultError) {
-          exitWithError(`Template not found: ${templatePath} and default template not found: ${defaultTemplatePath}`, filePath)
+    const templatePath = join(config.templateDir, outputPath)
+    let template: string
+
+    try {
+      template = await readFile(templatePath, 'utf8')
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+        if (config.defaultTemplate) {
+          const defaultTemplatePath = join(config.templateDir, config.defaultTemplate)
+          try {
+            template = await readFile(defaultTemplatePath, 'utf8')
+          } catch (defaultError) {
+            exitWithError(`Template not found: ${templatePath} and default template not found: ${defaultTemplatePath}`, filePath)
+          }
+        } else {
+          exitWithError(`Template not found: ${templatePath}`, filePath)
         }
       } else {
-        exitWithError(`Template not found: ${templatePath}`, filePath)
+        exitWithError('Failed to read template', filePath, error instanceof Error ? error : undefined)
       }
-    } else {
-      exitWithError('Failed to read template', filePath, error instanceof Error ? error : undefined)
     }
-  }
 
-  // Merge with template
-  let finalHtml: string
-  try {
-    const mergeContext: MergeContext = {
-      template,
-      content: html,
-      styles,
-      mountInfo
+    try {
+      const mergeContext: MergeContext = {
+        template,
+        content: html,
+        styles,
+        mountInfo
+      }
+
+      switch (config.templateEngine) {
+        case 'liquid':
+          finalHtml = await mergeLiquidTemplate(mergeContext)
+          break
+        case 'php':
+          finalHtml = await mergePHPTemplate(mergeContext)
+          break
+        case 'html':
+          finalHtml = await mergeHTMLTemplate(mergeContext)
+          break
+        default:
+          throw new Error(`Unknown template engine type: ${config.templateEngine}`)
+      }
+    } catch (error) {
+      exitWithError('Template merge failed', filePath, error instanceof Error ? error : undefined)
     }
-    
-    switch (config.templateEngine) {
-      case 'liquid':
-        finalHtml = await mergeLiquidTemplate(mergeContext)
-        break
-      case 'php':
-        finalHtml = await mergePHPTemplate(mergeContext)
-        break
-      case 'html':
-        finalHtml = await mergeHTMLTemplate(mergeContext)
-        break
-      default:
-        throw new Error(`Unknown template engine type: ${config.templateEngine}`)
-    }
-  } catch (error) {
-    exitWithError('Template merge failed', filePath, error instanceof Error ? error : undefined)
   }
   const templateMergeTime = performance.now()
 
