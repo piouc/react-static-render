@@ -50,6 +50,7 @@ Default configuration created by `react-static-render init`:
   "templateDir": "templates",
   "templateEngine": "html",
   "templateExtension": ".html",
+  "outputFilename": "[name]",
   "websocketPort": 3001,
   "defaultTemplate": "default.html"
 }

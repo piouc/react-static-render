@@ -1,11 +1,12 @@
 import { join } from 'path'
 import { glob } from 'glob'
 import { execa } from 'execa'
-import { 
+import {
   RenderError,
-  type RenderConfig, 
+  type RenderConfig,
   type RenderResult
 } from './config.js'
+import { resolveOutputPath } from './utils.js'
 
 function getDefaultWorkerPath(): string {
   const currentFileUrl = new URL(import.meta.url)
@@ -34,12 +35,13 @@ export async function renderFile(
       }
     })
     
-    const outputPath = join(config.outputDir, filePath)
-    
+    const { outputPath } = resolveOutputPath(filePath, config)
+    const fullOutputPath = join(config.outputDir, outputPath)
+
     return {
       success: true,
-      data: outputPath,
-      outputPath
+      data: fullOutputPath,
+      outputPath: fullOutputPath
     }
     
   } catch (processError: unknown) {

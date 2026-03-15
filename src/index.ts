@@ -25,6 +25,9 @@ export {
 export { FileWatcher } from './watcher.js'
 export { LiveReloadServer } from './websocket.js'
 
+// Export utilities
+export { resolveOutputPath, type ResolvedOutputPath } from './utils.js'
+
 // Export template engine functions
 export { mergeHTMLTemplate } from './engines/html.js'
 export { mergePHPTemplate } from './engines/php.js'

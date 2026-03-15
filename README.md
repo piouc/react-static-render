@@ -113,6 +113,7 @@ Configuration should be placed in `react-static-render.config.json`
 |--------|------|---------|-------------|
 | `prettierConfig` | `object \| false` | - | Prettier configuration object for formatting the generated HTML output. Set to `false` to disable formatting entirely. When enabled, uses Prettier's HTML parser. Supports all standard Prettier options like `printWidth`, `tabWidth`, `useTabs`, etc. |
 | `stripStyledComponentsData` | `boolean` | `false` | When `true`, renames `data-styled` attributes on `<style>` tags to `data-sc` and removes styled-components rehydration metadata CSS rules. This prevents client-side styled-components from claiming and clearing statically rendered styles when a separate client-side bundle also uses styled-components. |
+| `outputFilename` | `string` | `"[name]"` | Output filename template. Use `[name]` as a placeholder for the entry point name. For example, `"rendered-[name]"` turns `about.tsx` into `rendered-about.html`. Does not affect template file lookup |
 
 #### Advanced Options
 
@@ -142,6 +143,7 @@ Configuration should be placed in `react-static-render.config.json`
   "templateEngine": "html",
   "templateExtension": ".html",
   "mountInfoExport": "default",
+  "outputFilename": "[name]",
   "fileExtensions": ["js", "jsx", "ts", "tsx"],
   "patterns": ["src/**/*.tsx", "src/**/*.jsx", "templates/**/*.php"],
   "websocketPort": 3001,

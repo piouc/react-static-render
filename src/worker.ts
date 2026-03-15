@@ -2,7 +2,7 @@
 const processStartTime = performance.now()
 
 import register from '@babel/register'
-import { join, parse, resolve, dirname } from 'path'
+import { join, resolve, dirname } from 'path'
 import { readFile, mkdir, writeFile } from 'fs/promises'
 import { createRequire } from 'module'
 import { format } from 'prettier'
@@ -12,6 +12,7 @@ import { MountInfo, RenderConfig } from './config.js'
 import { mergeLiquidTemplate, type MergeContext } from './engines/liquid.js'
 import { mergePHPTemplate } from './engines/php.js'
 import { mergeHTMLTemplate } from './engines/html.js'
+import { resolveOutputPath } from './utils.js'
 
 // Register babel for worker's module imports
 register({
@@ -65,12 +66,8 @@ async function main(): Promise<void> {
     exitWithError('Invalid config JSON', undefined, error instanceof Error ? error : undefined)
   }
 
-  // Parse file info
-  const { dir, name } = parse(filePath)
-
   // Calculate paths
-  const outputExtension = config.templateExtension || '.html'
-  const outputPath = join(dir, `${name}${outputExtension}`)
+  const { outputPath, templateLookupPath } = resolveOutputPath(filePath, config)
   const absoluteInputPath = resolve(config.entryPointDir, filePath)
   const absoluteOutputPath = join(config.outputDir, outputPath)
 
@@ -156,7 +153,7 @@ async function main(): Promise<void> {
       exitWithError('Template directory not configured', filePath)
     }
 
-    const templatePath = join(config.templateDir, outputPath)
+    const templatePath = join(config.templateDir, templateLookupPath)
     let template: string
 
     try {

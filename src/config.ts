@@ -27,6 +27,7 @@ export interface BuildConfiguration {
   prettierConfig?: PrettierOptions | false
   fileExtensions?: readonly string[]
   stripStyledComponentsData?: boolean
+  outputFilename?: string
 }
 
 export interface CoreConfiguration {
@@ -136,6 +137,9 @@ const configSchema = z.object({
 
   stripStyledComponentsData: z.boolean().default(false)
     .describe('Strip data-styled attributes from style tags to prevent client-side rehydration'),
+
+  outputFilename: z.string().default('[name]')
+    .describe('Output filename template. Use [name] as placeholder for the entry point name'),
 
   // Advanced options
   maxConcurrentRenders: z.union([
