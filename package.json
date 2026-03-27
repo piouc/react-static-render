@@ -1,6 +1,6 @@
 {
   "name": "react-static-render",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "A CLI tool for rendering React components to static HTML files",
   "type": "module",
   "main": "dist/index.js",
