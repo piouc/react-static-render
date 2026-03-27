@@ -114,8 +114,9 @@ async function main(): Promise<void> {
         styles = styledSheet.getStyleTags()
         if (config.stripStyledComponentsData) {
           styles = styles
-            .replace(/data-styled="[^"]*"/g, 'data-sc="static"')
-            .replace(/ data-styled-version="[^"]*"/g, '')
+            .replace(/ ?data-styled="[^"]*"/g, '')
+            .replace(/ ?data-styled-version="[^"]*"/g, '')
+            .replace(/\/\*!sc\*\//g, '')
             .replace(/data-styled\.g\d+\[id="[^"]*"\]\{content:"[^"]*"\}/g, '')
         }
       } finally {
