@@ -112,7 +112,28 @@ async function main(): Promise<void> {
       try {
         html = decode(renderToStaticMarkup(styledSheet.collectStyles(mountInfo.node)))
         styles = styledSheet.getStyleTags()
-        if (config.stripStyledComponentsData) {
+        if (config.replaceStyledComponentsHashes || config.stripStyledComponentsData) {
+          // Build hash → component name mapping from data-styled rules
+          const classMapping = new Map<string, string>()
+          const mappingRegex = /data-styled\.g\d+\[id="([^"]+)"\]\{content:"([^"]+)"\}/g
+          let match: RegExpExecArray | null
+          while ((match = mappingRegex.exec(styles)) !== null) {
+            const componentName = match[1]!
+            const hashes = match[2]!.split(',').filter(Boolean)
+            for (const hash of hashes) {
+              classMapping.set(hash, componentName)
+            }
+          }
+
+          if (config.replaceStyledComponentsHashes) {
+            // Replace hash class names with component names in styles and html
+            for (const [hash, componentName] of classMapping) {
+              const hashRegex = new RegExp(`\\b${hash}\\b`, 'g')
+              styles = styles.replace(hashRegex, componentName)
+              html = html.replace(hashRegex, componentName)
+            }
+          }
+
           styles = styles
             .replace(/ ?data-styled="[^"]*"/g, '')
             .replace(/ ?data-styled-version="[^"]*"/g, '')

@@ -112,7 +112,8 @@ Configuration should be placed in `react-static-render.config.json`
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `prettierConfig` | `object \| false` | - | Prettier configuration object for formatting the generated HTML output. Set to `false` to disable formatting entirely. When enabled, uses Prettier's HTML parser. Supports all standard Prettier options like `printWidth`, `tabWidth`, `useTabs`, etc. |
-| `stripStyledComponentsData` | `boolean` | `false` | When `true`, renames `data-styled` attributes on `<style>` tags to `data-sc` and removes styled-components rehydration metadata CSS rules. This prevents client-side styled-components from claiming and clearing statically rendered styles when a separate client-side bundle also uses styled-components. |
+| `stripStyledComponentsData` | `boolean` | `false` | When `true`, removes `data-styled` and `data-styled-version` attributes from `<style>` tags, strips `/*!sc*/` comments and rehydration metadata CSS rules. This prevents client-side styled-components (including browser extensions) from claiming and clearing statically rendered styles. |
+| `replaceStyledComponentsHashes` | `boolean` | `false` | When `true`, replaces styled-components hash class names (e.g. `.jGvDvO`) with readable component names (e.g. `.image__Img-sc-tfhy86-0`) in both CSS and HTML output. Implies `stripStyledComponentsData` behavior. |
 | `outputFilename` | `string` | `"[name]"` | Output filename template. Use `[name]` as a placeholder for the entry point name. For example, `"rendered-[name]"` turns `about.tsx` into `rendered-about.html`. Does not affect template file lookup |
 
 #### Advanced Options
